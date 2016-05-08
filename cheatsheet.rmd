@@ -1,0 +1,415 @@
+
+---
+title: "R cheatsheet"
+author: Emil Rehnberg
+bibliography: refs.bib
+csl: shiki.csl
+output:
+  pdf_document:
+    highlight: zenburn
+  html_document:
+    toc_float: TRUE
+    css: styles.css
+---
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 200)
+```
+
+```{r echo=FALSE, eval=FALSE}
+require(rmarkdown); require(shiny)
+rmdFilePath <- "cheatsheet.rmd"
+rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
+```
+
+```{r echo=FALSE, message=FALSE}
+set.seed(308)
+require(colorout)
+require(dplyr)
+require(tidyr)
+require(magrittr)
+require(ggplot2)
+```
+
+## 目的
+
+cheatsheet for R. it's a place to dump typical annotated R-code.
+
+## Cheats
+
+### 雑多 {.tabset .tabset-fade .tabset-pills}
+
+#### Overview
+
+Section for "tricks".
+
+#### Citation
+
+```{r message=FALSE}
+require(magrittr)
+```
+
+```{r}
+citation() %>% toBibtex # defaults to R-documentation
+citation("magrittr") %>% toBibtex
+```
+
+#### remove named columns
+```{r message=FALSE}
+require(magrittr)
+```
+
+```{r}
+df <- data.frame(x=1:5, y=2:6, z=3:7, u=4:8)
+df
+df %>% subset(select=-c(z,u))
+df[ , -which(names(df) %in% c("z","u"))] # also works but not as nice IMO
+```
+
+#### generate factor levels
+
+```{r}
+gl(2, 3, labels = c("Control", "Treatment"))
+```
+
+#### print declared variable
+
+use parentheses to return / print result during variable declaration
+
+```{r}
+(a <- 1)
+a
+```
+
+### Tests {.tabset .tabset-fade .tabset-pills}
+
+#### Overview
+
+Section for test. Parametric and non-paratmetric.
+
+#### Mann-Whitney-Wilcoxon Test
+
+In statistics, the Mann–Whitney U test (also called the Mann–Whitney–Wilcoxon (MWW), Wilcoxon rank-sum test, or Wilcoxon–Mann–Whitney test) is a nonparametric test of the null hypothesis that two samples come from the same population against an alternative hypothesis, especially that a particular population tends to have larger values than the other.[@wikiMannWhitneyUTest]
+
+Unlike the t-test it does not require the assumption of normal distributions. It is nearly as efficient as the t-test on normal distributions.[@wikiMannWhitneyUTest]
+
+Use the Wilcoxon signed-rank test when samples are related / paired.
+
+Example code [@wilcoxTest]
+
+```{r}
+require(graphics)
+## One-sample test.
+x <- c(1.83,  0.50,  1.62,  2.48, 1.68, 1.88, 1.55, 3.06, 1.30)
+y <- c(0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29)
+wilcox.test(y - x, alternative = "less",
+            exact = FALSE, correct = FALSE) # H&W large sample approximation
+
+## Two-sample test.
+x <- c(0.80, 0.83, 1.89, 1.04, 1.45, 1.38, 1.91, 1.64, 0.73, 1.46)
+y <- c(1.15, 0.88, 0.90, 0.74, 1.21)
+wilcox.test(x, y, alternative = "greater")
+wilcox.test(x, y, alternative = "greater",
+            exact = FALSE, correct = FALSE) # H&W large sample approximation
+
+wilcox.test(rnorm(10), rnorm(10, 2), conf.int = TRUE)
+
+## Formula interface.
+boxplot(Ozone ~ Month, data = airquality)
+wilcox.test(Ozone ~ Month, data = airquality,
+            subset = Month %in% c(5, 8))
+```
+
+#### Wilcoxon signed-rank test
+
+The Wilcoxon signed-rank test is a non-parametric statistical hypothesis test used when comparing two related samples, matched samples, or repeated measurements on a single sample to assess whether their population mean ranks differ (i.e. it is a paired difference test). It can be used as an alternative to the paired Student's t-test, t-test for matched pairs, or the t-test for dependent samples when the population cannot be assumed to be normally distributed. [@lowry11]
+
+Example code [@wilcoxTest], [@rTutorWilcoxonSignedRankTest]
+
+```{r}
+x <- c(1.83,  0.50,  1.62,  2.48, 1.68, 1.88, 1.55, 3.06, 1.30)
+y <- c(0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29)
+wilcox.test(x, y, paired = TRUE, alternative = "greater")
+
+require(MASS)
+wilcox.test(immer$Y1, immer$Y2, paired=TRUE)
+```
+
+### Supervised {.tabset .tabset-fade .tabset-pills}
+
+#### Notations {#supervised-notations}
+
+- $p$ number of variables / parameters to fit
+- $m$ number of variable to try each split (Random Forest)
+
+#### PLS - Partial Least Squares
+```{r}
+```
+
+#### Random Forests {.tabset .tabset-fade .tabset-pills}
+
+##### Overall notes
+
+- to compare random forests, perform wilcoxon test on mean differences of absolute errors. [@esl2]
+
+##### Classification
+
+- Categorical (e.g. Binary) Response
+- authors suggest parameters should be (See [Notations](#supervised-notations))[@esl2rfDetails]
+    - $\min(m) = 1$
+    - $m = \sqrt(p)$
+
+Example code [@rfPackage] [@sll10a]
+
+```{r}
+require(randomForest)
+##data(iris)
+set.seed(71)
+(iris.rf <-
+	randomForest(
+		Species ~ .,
+		data=iris,
+		importance=TRUE,
+		proximity=TRUE))
+## Look at variable importance:
+round(importance(iris.rf), 2)
+```
+
+- proximity: refers to a proximity matrix which is the distance $\in[0,1]$ between the observations.
+    - A matrix of proximity measures among the input (based on the frequency that pairs of data points are in the same terminal nodes).
+- By performing MDS on the proximity we can get a feeling for how the observations group between each-other.
+
+```{r}
+## Do MDS on 1 - proximity:
+iris.mds <- cmdscale(1 - iris.rf$proximity, eig=TRUE) # Classical (Metric) Multidimensional Scaling
+op <- par(pty="s")
+pairs(cbind(iris[,1:4], # Scatterplot Matrices
+            iris.mds$points),
+      cex=0.6,
+      gap=0,
+      col=c("red", "green", "blue")[as.numeric(iris$Species)],
+      main="Iris Data: Predictors and MDS of Proximity Based on RandomForest")
+par(op)
+print(iris.mds$GOF)
+```
+
+include test data in the `randomForest` call to get the full proximity matrix between test and train data [@rfProximityForAll]
+
+```{r}
+set.seed(71)
+ind <- sample(1:150,140,replace = FALSE)
+train <- iris[ind,]
+test <- iris[-ind,]
+
+(iris.rf1 <- randomForest(x = train[,1:4],
+                         y = train[,5],
+                         xtest = test[,1:4],
+                         ytest = test[,5],
+                         importance=TRUE,
+                         proximity=TRUE))
+dim(iris.rf1$test$prox)
+```
+
+```{r}
+## "x" can be a matrix instead of a data frame:
+set.seed(17)
+x <- matrix(runif(5e2), 100)
+y <- gl(2, 50) # Generate Factor Levels: 2 levels, 50 of each level
+(myrf <- randomForest(x, y)) # parentheses leads to printing of the declaration
+predict(myrf, x)
+
+## stratified sampling: draw 20, 30, and 20 of the species to grow each tree.
+##data(iris)
+randomForest(Species ~ .,
+             data = iris,
+             sampsize=c(20, 30, 20))
+```
+
+##### Regression
+
+- continuous response
+- authors suggest parameters should be (See [Notations](#supervised-notations))[@esl2rfDetails]
+    - $\min(m) = 5$
+    - $m = \sqrt(p)$
+
+Example code [@rfPackage] [@sll10b]
+
+```{r message=FALSE}
+require(MASS)
+require(randomForest)
+require(magrittr)
+```
+
+```{r}
+set.seed(101)
+# ?Boston # to see more data info. it's housing values in Boston suburbs.
+Boston %>% str
+
+train <- 1:nrow(Boston) %>% sample(300)
+
+randomForest(medv ~ .,
+             data = Boston,
+             subset = train)
+
+nTreesToFit <- 400
+maxVarsToTry <- 4 # 13
+forests <-
+  lapply(1:maxVarsToTry, function(varsToTry){
+    randomForest(medv ~ .,
+                 data = Boston,
+                 subset = train,
+                 mtry = varsToTry, # number of variables tried at each split
+                 importance = TRUE,
+                 ntree = nTreesToFit)
+  })
+
+# Variables of highest "Importance"
+forests[[maxVarsToTry]] %>% importance %>% round(2) %>% as.data.frame %>% arrange(desc(`%IncMSE`))
+
+testData <- Boston[-train,]
+errors <-
+  data.frame(varsPerSplit = 1:maxVarsToTry,
+             oob = forests %>% sapply(function(forest){ forest$mse[nTreesToFit] }),
+             test = forests %>%
+               sapply(function(forest){
+                 pred <- predict(forest, testData)
+                 with(testData,
+                      mean((medv - pred)^2))
+               }))
+cols <- c("red", "blue")
+matplot(errors$varsPerSplit,
+        errors %>% subset(select = -c(varsPerSplit)),
+        pch=19,
+        col=cols,
+        type="b",
+        ylab="Mean Squared Error")
+legend("topright",
+       legend=c("OOB", "Test"),
+       pch=19,
+       col=cols)
+
+## data(airquality)
+set.seed(131)
+(ozone.rf <- randomForest(Ozone ~ ., data=airquality, mtry=3,
+                         importance=TRUE, na.action=na.omit))
+## Show "importance" of variables: higher value mean more important:
+ozone.rf %>% importance %>% round(2)
+
+## randomForest call with test data
+set.seed(131)
+trainObservations <- seq(1:nrow(airquality)) %>% sample(133)
+testData <- airquality[-trainObservations, ] %>% na.omit # no NAs in the test data!
+randomForest(Ozone ~ .,
+             data=airquality,
+             subset=trainObservations,
+             xtest=testData %>% dplyr::select(-Ozone),
+             ytest=testData %>% use_series("Ozone"), # atomic vector needed
+             mtry=3,
+             importance=TRUE,
+             na.action=na.omit)
+
+## "complicated" formula:
+(swiss.rf <- randomForest(sqrt(Fertility) ~ . - Catholic + I(Catholic < 50),
+                          data=swiss))
+predict(swiss.rf, swiss)
+
+## Test use of 53-level factor as a predictor:
+set.seed(1)
+x <- data.frame(x1=gl(53, 10),
+                x2=runif(530),
+                y=rnorm(530))
+(rf1 <- randomForest(y ~ ., data=x, ntree=10))
+
+## Grow no more than 4 nodes per tree:
+randomForest(Species ~ ., data=iris, maxnodes=4, ntree=30) %>% treesize
+
+## test proximity in regression
+(iris.rrf <-
+  randomForest(Sepal.Width ~ .,
+               data=iris,
+               ntree=101,
+               proximity=TRUE,
+               oob.prox=FALSE))
+iris.rrf$proximity %>% str
+```
+
+#### Boosting { .tabset .tabset-fade .tabset-pills }
+
+##### Random Forest regression
+
+random forest boosting with continous response.
+
+- authors suggest $m = \sqrt(p)$ (See [Notations](#supervised-notations))
+- see latter half of `mpv Movies/statistical-learning/08-tree-based-methods/StatsLearning Lect10 R trees B 111213-IY7oWGXb77o.mp4`
+
+```{r message=FALSE}
+require(MASS)
+require(magrittr)
+require(gbm) # Gradient Boosted Machines
+```
+
+```{r}
+set.seed(101)
+# ?Boston # to see more data info. it's housing values in Boston suburbs.
+Boston %>% str
+
+train <- 1:nrow(Boston) %>% sample(300)
+
+boost.boston <-
+  gbm(medv ~ .,
+      data = Boston[train,],
+      distribution = "gaussian",
+      n.trees = 10000,
+      shrinkage = 0.01,
+      interaction.depth = 4)
+boost.boston %>% summary # gives variance importance plot.
+# variables lstat (lower status) and rm (rooms) are impacting the most.
+boost.boston %>% plot(i = "lstat") # partical dependency plot for the two most important plots.
+boost.boston %>% plot(i = "rm")
+
+n.trees <-
+  seq(from = 100,
+      to = 10000,
+      by = 100)
+testData <- Boston[-train, ]
+predmat <-
+  predict(boost.boston,
+          newdata = testData,
+          n.trees = n.trees)
+predmat %>% dim
+berr <-
+  with(testData,
+       apply((predmat - medv)^2, 2, mean))
+plot(n.trees,
+     berr,
+     pch = 19,
+     ylab = "Mean Squared Error",
+     xlab = "# Trees",
+     main = "Boosting Test Error")
+# from the RF w/o boosting.
+# run that example first if you want to compare the boost vs non-boost results.
+abline(h = min(errors$test),
+       col="red")
+```
+
+### Unsupervised { .tabset .tabset-fade .tabset-pills }
+
+#### Overview
+
+methods for unsupervised learning.
+
+#### PCA/PCR
+
+#### Random Forest
+
+Example code [@rfPackage]
+
+```{r}
+require(randomForest)
+## The `unsupervised' case:
+##data(iris)
+set.seed(17)
+(iris.urf <- randomForest(iris %>% dplyr::select(-Species)))
+MDSplot(iris.urf, iris$Species) # Species sets the colors.
+```
+
