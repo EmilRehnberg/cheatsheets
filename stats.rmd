@@ -1,0 +1,80 @@
+
+---
+title: "stats cheatsheet"
+author: Emil Rehnberg
+bibliography: refs.bib
+csl: shiki.csl
+output:
+  pdf_document:
+    highlight: zenburn
+  html_document:
+    toc_float: TRUE
+    css: styles.css
+---
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 200)
+```
+
+```{r echo=FALSE, eval=FALSE}
+require(rmarkdown); require(shiny)
+rmdFilePath <- "stats.rmd"
+rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
+```
+
+```{r echo=FALSE, message=FALSE}
+set.seed(308)
+require(colorout)
+require(magrittr)
+```
+
+```{r echo=FALSE}
+# abbreviation tags
+dlmAbbrTag <- tags$abbr("DLM", title="Dynamic Linear Model")
+```
+
+## 目的
+
+cheatsheet for statistics. it's a place to dump thoughtworthy stuff that I might want to look up for reminders.
+
+## Methodologies {.tabset .tabset-fade .tabset-pills}
+
+```{r eval=FALSE}
+### Overview
+
+data mining, prediction stuff
+```
+
+### DLMs
+
+Definition of `r dlmAbbrTag` [@west1999multiDLM]
+
+For each $t$, the model is defined by
+<dl>
+  <dt>Observation equation:</dt>
+  <dd>$Y_t = \mathbf{F}'_t \boldsymbol\theta_t + \nu_t, \; \nu_t \sim \mathsf{N}[0, V_t]$</dd>
+  <dt>System equation:</dt>
+  <dd>$\boldsymbol\theta_t = \boldsymbol\theta_{t-1} + \boldsymbol\omega_t, \;
+  \boldsymbol\omega_t \sim \mathsf{N}[\mathbf{0}, \mathbf{W}_t]$</dd>
+</dl>
+
+- **regression vector**: $\mathbf{F}_t = (X_{t1} ,\ldots, X_{tn})'$ (predictors)
+- **regression parameter vector**: $\boldsymbol\theta_t$ ($n \times 1$) (coefficients)
+- **evolution variance matrix**: $\mathbf{W}_t$ (for $\boldsymbol\theta_t$)
+    - the evolution error term $\boldsymbol\omega_t$ describes the changes in the elements of the parameter vector between times $t-1$ and $t$.
+    - the zero mean vector reflects that $\boldsymbol\theta_t$ is expected to be constant over the interval
+    - the variance matrix $\mathbf{W}_t$ governs the extent of the movements in $\boldsymbol\theta_t$ and hence the extent of the time period over which the assumption of local contancy is reasonable
+
+illustration of when $n = 1$ yields a straight line regression
+$\mathbf{F}_t = (1, X_t)'$ and $\boldsymbol\theta_t = (\alpha_t, \beta_t)'$.
+Then
+$$
+\begin{align*}
+  Y_t & = \alpha_t + \beta_t X_t + \nu_t, & \nu_t & \sim \mathsf{N}(0, V_t) \\
+  \alpha_t & = \alpha_{t-1} + \omega_{t1}  \\
+  \beta_t & = \beta_{t-1} + \omega_{t2}
+\end{align*}
+$$
+
+where $\boldsymbol\omega_t = (\omega_{t1}, \omega_{t2})' \sim \mathsf{N}[0, \mathbf{W}_t]$
+
