@@ -39,17 +39,11 @@ cheatsheet for statistics. it's a place to dump thoughtworthy stuff that I might
 
 ## Methodologies {.tabset .tabset-fade .tabset-pills}
 
-```{r eval=FALSE}
-### Overview
-
-data mining, prediction stuff
-```
-
 ### DLMs
 
-Definition of `r dlmAbbrTag` [@west1999multiDLM]
+#### Definition [@west1999multiDLM]
 
-For each $t$, the model is defined by
+`r dlmAbbrTag`: For each $t$, the model is defined by
 <dl>
   <dt>Observation equation:</dt>
   <dd>$Y_t = \mathbf{F}'_t \boldsymbol\theta_t + \nu_t, \; \nu_t \sim \mathsf{N}[0, V_t]$</dd>
@@ -78,3 +72,110 @@ $$
 
 where $\boldsymbol\omega_t = (\omega_{t1}, \omega_{t2})' \sim \mathsf{N}[0, \mathbf{W}_t]$
 
+#### General normal definition
+
+Set of params definines DLM $(\mathbf{F}, \mathbf{G}, \mathbf{V}, \mathbf{W})$ [@west1999generalDLMdef]
+
+where
+
+- $r$ - number of variables to estimate e.g. timeslots
+- $n$ - number of parameters to fit and use e.g. seasonality parts
+
+at each time $t$ ()
+
+$$
+\begin{align*}
+  \mathbf{F}_t & \mbox{ is a known } (n \times r) \mbox{ matrix}\\
+  \mathbf{G}_t & \mbox{ is a known } (n \times n) \mbox{ matrix}\\
+  \mathbf{V}_t & \mbox{ is a known } (r \times r) \mbox{ matrix}\\
+  \mathbf{W}_t & \mbox{ is a known } (n \times n) \mbox{ matrix}
+\end{align*}
+$$
+
+this quadruple defines the `r dlmAbbrTag` relating $\mathbf{Y}_t$ to the $(n \times 1)$ parameter $\boldsymbol\theta_t$ at time $t$ and
+$$
+\begin{align*}
+  (\mathbf{Y}_t | \boldsymbol\theta_t) & \sim N[\mathbf{F}_t' \boldsymbol\theta_t, \mathbf{V}_t] \\
+  (\boldsymbol\theta_t | \boldsymbol\theta_{t-1}) & \sim N[\mathbf{G}_t' \boldsymbol\theta_{t-1}, \mathbf{W}_t]
+\end{align*}
+$$
+
+or
+
+$$
+\begin{align*}
+  \mathbf{Y}_t & = \mathbf{F}_t'\boldsymbol\theta_t + \boldsymbol\nu_t, &
+  \boldsymbol\nu_t \sim & N[\mathbf{0}, \mathbf{V}_t] & \mbox{ (aka observation equation)} \\
+  \boldsymbol\theta_t & = \mathbf{G}_t'\boldsymbol\theta_{t-1} + \boldsymbol\omega_t, &
+  \boldsymbol\omega_t \sim & N[\mathbf{0}, \mathbf{W}_t] & \mbox{ (aka evolution, state or system equation)}
+\end{align*}
+$$
+
+- $\mathbf{F}_t$ is the design matrix of known values of independent variables
+- $\boldsymbol\theta_t$ is the state, or system, vector
+- $\boldsymbol\mu_t = \mathbf{F}'_t \boldsymbol\theta_t$ is the mean response or level
+- $\boldsymbol\nu_t$ is the observation error
+- $\mathbf{G}_t$ is the evolution, system, transfer or state matrix
+- $\boldsymbol\omega_t$ is the system, or evolution, error with evolution variance $\mathbf{W}_t$
+
+Parameter setting [@west1999obsVar]
+
+- regression vectors $\mathbf{F}_t$ and evolution matrix $\mathbf{G}_t$ area defined by the modeller via model design principles (ch 5/6?)
+- $\mathbf{W}_t$ is usually definied with the discount principle (ch 6) (discount factors $\delta$?)
+- $V_t$ is often unknown and relatively large to system variance $\mathbf{W}_t$
+
+one-step forecast [@west1999generalDLMdef]
+
+1. Posterior for $\boldsymbol\theta_{t-1}$ (for some $\mathbf{m}_{t-1}$, and $\mathbf{C}_{t-1}$):
+   $$ (\boldsymbol\theta_{t-1} | D_{t-1}) \sim \mathsf{N}[\mathbf{m}_{m-1}, \mathbf{C}_{t-1}] $$
+2. Prior for $\boldsymbol\theta_t$:
+   $$ (\boldsymbol\theta_{t} | D_{t-1}) \sim \mathsf{N}[\mathbf{a}_t, \mathbf{R}_{t}] \\
+   \mbox{where } \mathbf{a}_t = \mathbf{G}_t\mathbf{m}_{t-1} \mbox{ and } \mathbf{R}_t = \mathbf{G}_tC_{t-1}\mathbf{G}'_t + \mathbf{W}_t$$
+3. 1-step forecast:
+   $$ (Y_t | D_{t-1}) \sim \mathsf{N}[f_t, Q_t] \\
+   \mbox{where } f_t = \mathbf{F}'_t\mathbf{a}_t \mbox{ and } Q_t = \mathbf{F}'_tR_t\mathbf{F}_t + V_t$$
+4. Posterior for $\theta_t$:
+   $$ (\boldsymbol\theta_{t} | D_{t}) \sim \mathsf{N}[\mathbf{m}_t, \mathbf{C}_t] \\
+   \mbox{with } \mathbf{m}_t = \mathbf{a}_t + \mathbf{A}_te_t \mbox{ and } \mathbf{C}_t = \mathbf{R}_t - \mathbf{A}_t Q_t\mathbf{A}'_t \\
+   \mbox{where } \mathbf{A}_t = \mathbf{R}_t\mathbf{F}_t Q_t^{-1} \mbox{ and } e_t=Y_t - f_t$$
+
+#### One-step forecast [@west1999oneStepDlm]
+
+1. Posterior for $\theta_t$:
+   $$ (\theta_{t-1} | D_{t-1}) \sim \mathsf{N}[m_{m-1}, C_{t-1}] \\
+   \mbox{ for some mean } m_{t-1} \mbox{ and variance } C_{t-1}$$
+2. Prior for $\theta_t$:
+   $$ (\theta_{t} | D_{t-1}) \sim \mathsf{N}[m_{m-1}, R_{t}] \\
+   \mbox{where } R_t = C_{t-1} + W_t$$
+3. 1-step forecast:
+   $$ (Y_t | D_{t-1}) \sim \mathsf{N}[f_t, Q_t] \\
+   \mbox{where } f_t = F_tm_{t-1} \mbox{ and } Q_t = F^2_tR_t + V_t$$
+4. Posterior for $\theta_t$:
+   $$ (\theta_{t} | D_{t}) \sim \mathsf{N}[m_{m}, C_{t}] \\
+   \mbox{with } m_t = m_{t-1} + A_te_t \mbox{ and } C_t = R_tV_t / Q_t \\
+   \mbox{where } A_t = R_tF_t / Q_t \mbox{ and } e_t=Y_t - f_t$$
+
+Comments
+
+- The coefficient $A_t = R_tF_t / Q_t$ scales the correction term according to the relative precisions of the prior and likelihood, as measured by $R_t / Q_t$, and by the regressor value $F_t$. The correction always take the sign of $F_t$ and may be unbounded.
+- Posterior precision
+  $$ C^{-1}_t = Q_t(R_tV_t)^{-1} = R^{-1}_t + F^2_tV_t^{-1} $$
+  is hence larger than $R^{-1}_t$ (unless $F_t = 0$ - $Y_t$ provides no information on $\theta_t$).
+  Thus, the posterior for $\theta_t$ is never more diffuse than it's prior.
+  If $F_t = 0$ for a sequence of observations then the $C_t$ grows by the addition of furhter $W_t$ terms, reflecting an increasingly diffuse posterior.
+
+#### Discount factor
+
+$\delta$ is often used as notation for the discount factor.
+
+- $\delta\in[0,1]$ represents the difference in importance between future rewards and present rewards.
+- inverse multiplied by $C$ to make $R$. (GL set-up)
+
+### Overview
+
+data mining, prediction stuff
+
+
+TODO
+
+- look up Kalman filtering? seems very standard
