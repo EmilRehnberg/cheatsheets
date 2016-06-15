@@ -1,0 +1,56 @@
+
+---
+title: "git cheatsheet"
+author: Emil Rehnberg
+bibliography: refs.bib
+csl: shiki.csl
+output:
+  pdf_document:
+    highlight: zenburn
+  html_document:
+    toc_float: TRUE
+    css: styles.css
+---
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 200)
+```
+
+```{r echo=FALSE, eval=FALSE}
+require(rmarkdown); require(shiny)
+rmdFilePath <- "git.rmd"
+allexamples <- FALSE
+rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
+```
+
+## 目的
+
+cheatsheet for git. it's a place to dump typical git commands.
+
+## Commands
+
+### history
+
+use `git-reflog`
+
+- to see history including commits.
+    - Even lost commits that does not show up in `git-log`.
+- to reverse `git-reset --hard {glob}`
+
+```sh
+git reflog
+```
+
+```
+dca4f46 HEAD@{0}: reset: moving to dca4f46
+efe2d96 HEAD@{1}: reset: moving to efe2d96ef35550ddb4c43b6706e17be439ce179a
+dca4f46 HEAD@{2}: rebase -i (finish): returning to refs/heads/master
+dca4f46 HEAD@{3}: commit: splits weekend component into two
+efe2d96 HEAD@{4}: commit (amend): alters to predict one timeslot per day
+ffd9abd HEAD@{5}: reset: moving to HEAD~
+a67003b HEAD@{6}: cherry-pick: fast-forward
+ffd9abd HEAD@{7}: rebase -i (start): checkout HEAD~5
+a67003b HEAD@{8}: rebase: aborting
+3094d4d HEAD@{9}: reset: moving to HEAD~
+ffd9abd HEAD@{10}: reset: moving to HEAD~
+```
