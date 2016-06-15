@@ -1,0 +1,457 @@
+
+---
+title: "SQL cheatsheet"
+author: Emil Rehnberg
+bibliography: refs.bib
+csl: shiki.csl
+output:
+  pdf_document:
+    highlight: zenburn
+  html_document:
+    toc_float: TRUE
+    css: styles.css
+---
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 200)
+```
+
+```{r echo=FALSE, eval=FALSE}
+library(rmarkdown); library(shiny)
+rmdFilePath <- "sql.rmd"
+allexamples <- FALSE
+rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
+```
+
+```{r echo=FALSE, message=FALSE}
+set.seed(308)
+library(magrittr)
+```
+
+## 目的
+
+Cheatsheet for SQL. It's a place to dump typical annotated SQL-code.
+
+### General / Tricks
+
+Sections for ANSI, Transact-SQL, Postgresql, MySQL
+
+### ANSI { .tabset .tabset-fade .tabset-pills }
+
+#### Overview
+
+Standard SQL and "common" SQL (e.g. window functions)
+
+#### Rollbacks
+
+- use `BEGIN TRAN(SACTION)` to open a transaction
+- `BEGIN TRAN T1` names the transaction `T1`
+    - use-case: applying nested/multiple transactions
+- using `WITH MARK [descr]` with named transaction makes the (named) log restorable
+
+```sql
+BEGIN TRAN T1;
+  UPDATE table1 ...;
+  BEGIN TRAN M2 WITH MARK;
+    UPDATE table2 ...;
+  COMMIT TRAN M2;
+  UPDATE table3 ...;
+COMMIT TRAN T1;
+```
+
+#### Find first missing key/number
+
+Main idea: use <code>NOT EXISTS</code> to <i>catch</i> when <i>key + 1 does not exist</i> ( and `NOT EXISTS` catches this)
+
+```sql
+SELECT
+  CASE
+  WHEN NOT EXISTS(
+    SELECT *
+    FROM dbo.T1
+    WHERE key = 1)
+  THEN 1
+  ELSE (...subquery for min NA...)
+  END AS ...
+  ...
+```
+
+Returns 1 if 1 doesn't exist, otherwise, it returns the subquery result. The subquery returns the minimum missing value &gt;1
+
+```sql
+SELECT  MIN(A.key) + 1 as missing
+FROM    dbo.T1 AS A
+WHERE NOT EXISTS(
+  SELECT *
+  FROM dbo.T1 AS B
+  WHERE B.key = A.key + 1)
+```
+
+The `NOT EXISTS` predicate returns `TRUE` only for values in `T1` that are right before a gap.
+
+A nice solution using `OUTER JOIN`.
+
+- Identify `NULL`s in outer rows for smallest missing key (keys > 1)
+
+```sql
+SELECT MIN(A.keycol) + 1
+FROM dbo.T1 AS A
+  LEFT OUTER JOIN dbo.T1 AS B
+    ON B.keycol = A.keycol + 1
+WHERE B.keycol IS NULL;
+```
+
+To put your knowledge of the `EXISTS` predicate into action, try to solve the following problem. Notice that keycol must be positive
+
+```sql
+USE tempdb;
+GO
+  IF OBJECT_ID('dbo.T1') IS NOT NULL
+    DROP TABLE dbo.T1;
+GO
+
+CREATE TABLE dbo.T1
+(
+  keycol  INT         ...,
+  datacol VARCHAR(10) ...
+);
+INSERT INTO dbo.T1(keycol, datacol)
+     VALUES
+  (3, 'a'),
+  (4, 'b'),
+  (6, 'c'),
+  (7, 'd');
+```
+
+Write a query that returns the lowest missing key (starting at 1). E.g. the table is currently populated with the keys 3, 4, 6, and 7. Query should return the value 1. If you insert two more rows, with the keys 1 and 2, your query should return 5.
+
+Alternative solution (perhaps harder to read)
+
+```sql
+SELECT COALESCE(MIN(A.keycol) + 1, 1)
+FROM dbo.T1 AS A
+WHERE
+  NOT EXISTS(
+    SELECT * FROM dbo.T1 AS B
+    WHERE B.keycol= A.keycol + 1)
+  AND EXISTS(
+    SELECT * FROM dbo.T1
+    WHERE keycol = 1);
+```
+
+#### Removing duplicates with DELETE
+
+use `ROW_NUMBER` over unique traits and `DELETE` where row number is over 1
+
+```sql
+WITH Dups AS (
+  SELECT orderid, custid, empid, orderdate,
+    ROW_NUMBER()
+      OVER(PARTITION BY orderid
+        ORDER BY (SELECT 0)) AS rn
+  FROM dbo.OrdersDups
+)
+DELETE FROM Dups
+WHERE rn > 1;
+```
+
+calculate `ROW_NUMBER` and `RANK` over unique traits and delete where they differ
+
+```sql
+WITH Dups AS (
+  SELECT orderid, custid, empid, orderdate,
+    ROW_NUMBER()
+      OVER(PARTITION BY orderid
+        ORDER BY (SELECT 0)) AS rn,
+    RANK()
+      OVER(PARTITION BY orderid
+        ORDER BY (SELECT 0)) AS rnk
+  FROM dbo.OrdersDups
+)
+DELETE FROM Dups
+WHERE rn <> rnk;
+```
+
+#### last order for each customer
+
+Extract last order for each customer
+standard SQL
+
+```sql
+SELECT id, customer_id, order_date, shipping_country
+  FROM orders o1
+  JOIN (
+    SELECT customer_id     AS cid,
+           MAX(order_date) AS maxdate
+      FROM orders
+  GROUP BY customer_id
+       ) o2
+    ON o1.customer_id = o2.cid
+   AND o1.order_date = o2.{{maxdate}};
+```
+
+### Postgresql { .tabset .tabset-fade .tabset-pills }
+
+#### Overview
+
+open source dialect, boosting standard ANSI sql.
+
+#### last order for each customer
+
+Extract last order for each customer
+standard SQL
+
+```sql
+  SELECT DISTINCT ON(customer_id)
+         *
+    FROM orders
+ORDER BY customer_id::remember last order,
+         order_date DESC;
+```
+
+```sql
+ id | customer_id | order_date | shipping_country
+----+-------------+------------+------------------
+  3 |           2 | 2015-12-12 | NO
+  2 |           4 | 2015-10-05 | JA
+(2 rows)
+```
+
+### T-SQL { .tabset .tabset-fade .tabset-pills }
+
+#### Overview
+
+MS sql dialect transact-sql for SQL server
+
+#### Triggers
+
+triggers work like callback::programming terms. The following prints 'INSERT detected' after an `INSERT`
+
+```sql
+CREATE TRIGGER trgCustsINSERT
+  ON Custs
+  AFTER INSERT
+AS
+  PRINT 'INSERT detected.';
+GO
+```
+
+#### Adding DATETIME and TIME
+
+```sql
+DECLARE @d DATETIME = '2013-02-18T18:34:40.330',
+        @t TIME(7)  = '00:11:00.0000000';
+
+SELECT DATEADD(
+  SECOND,
+  DATEDIFF(SECOND, 0, @t),
+  @d);
+```
+
+```sql
+...
+-----------------------
+2013-02-18 18:45:40.330
+```
+
+#### partitioned views
+
+two orthogonal classifications
+
+- physical placement of the component tables
+    - local: all tables constituting a partitioned view are located in a single instance of SQL Server
+    - distributed: tables are located across two or more instances
+- updatability
+    - updatable: has a single column constraint on each participating table to determine which table a row belongs to
+    - not updatable: -
+
+#### archive deleted records
+
+archive deleted data with `DELETE OUTPUT (INTO)`
+
+```sql
+WHILE 1 = 1
+BEGIN
+  DELETE TOP(5000) FROM orders
+    OUTPUT deleted.orderid, deleted.date
+      INTO archive(orderid, date)
+  WHERE date < '20060101';
+  IF @@rowcount < 5000 BREAK;
+END
+```
+
+#### Apply clause
+
+The `APPLY` operator involves one or two steps:
+
+1. Apply Right Table Expression to Left Table Rows
+2. Add Outer Rows
+
+`CROSS APPLY` uses 1., `OUTER APPLY` uses both.
+
+I think of `APPLY` as a way to loop over a set of rows (something which might be nice when you want to match on a set element-by-element)
+
+query returning the two (highest order IDs) orders for each
+customer:
+
+```sql
+SELECT C.customerid, C.city, A.orderid
+  FROM dbo.Customers AS C
+  CROSS APPLY
+    (SELECT TOP (2) O.orderid, O.customerid
+       FROM dbo.Orders AS O
+      WHERE O.customerid = C.customerid
+   ORDER BY orderid DESC) AS A;
+```
+
+This query generates the following output:
+
+```sql
+custid city   orderid
+------ ------ -------
+FRNDO  Madrid 2
+FRNDO  Madrid 1
+KRLOS  Madrid 5
+KRLOS  Madrid 4
+MRPHS  Zion   6
+```
+
+Notice that FISSA is missing from the output because the table expression A returned an empty set for it. If you also want to return customers who placed no orders, use `OUTER APPLY` as follows:
+
+```sql
+SELECT C.customerid, C.city, A.orderid
+FROM dbo.Customers AS C
+  OUTER APPLY
+    (SELECT TOP (2) O.orderid, O.customerid
+     FROM dbo.Orders AS O
+     WHERE O.customerid = C.customerid
+     ORDER BY orderid DESC) AS A;
+```
+
+This query generates the following output:
+
+```sql
+custid city   orderid
+------ ------ -------
+FISSA  Madrid NULL
+FRNDO  Madrid 2
+FRNDO  Madrid 1
+KRLOS  Madrid 5
+KRLOS  Madrid 4
+MRPHS  Zion   6
+```
+
+#### Grouping ID
+
+- helps with identifying grouped rows
+    - instead of matching on `NULL`s
+- accepts a list of attributes and constructs an integer bitmap for each attribute
+    - bit is 0 grouping set member attributes, 1 otherwise
+- the rightmost bit represents the rightmost input attribute
+- `GROUPING_ID(a, b, c, d)` returns
+    - 0 (0×8 + 0×4 + 0×2 + 0×1) for grouping set (a, b, c, d)
+    - 1 (0×8 + 0×4 + 0×2 + 1×1) for grouping set (a, b, c)
+    - 2 (0×8 + 0×4 + 1×2 + 0×1) for grouping set (a, b, d)
+    - 3 (0×8 + 0×4 + 1×2 + 1×1) for grouping set (a, b)
+    - ...
+
+```sql
+SELECT
+  GROUPING_ID(
+    custid,
+    empid,
+    YEAR(date),
+    MONTH(date),
+    DAY(date) ) AS grp_id,
+  c_id, e_id,
+  YEAR(date) AS year,
+  MONTH(date) AS mnth,
+  DAY(date) AS day,
+  SUM(qty) AS qty
+FROM dbo.Orders
+GROUP BY
+  CUBE(c_id, e_id),
+  ROLLUP(YEAR(date), MONTH(date), DAY(date))
+```
+
+`grp_id` value 25 is grouping set `(year, mnth)`. I.e. the second and third bits (value 2,4).
+
+```sql
+grp_id c_id e_id year mnth day  qty
+------ ---- ---- ---- ---- ---- ---
+0      C    3    2006 4    18   22
+16     NULL 3    2006 4    18   22
+0      A    3    2006 8    2    10
+24     NULL NULL 2006 4    18   22
+25     NULL NULL 2006 4    NULL 22
+16     NULL 3    2006 8    2    10
+24     NULL NULL 2006 8    2    10
+25     NULL NULL 2006 8    NULL 10
+0      D    3    2006 9    7    30
+16     NULL 3    2006 9    7    30
+...
+```
+
+#### INSERT EXEC stored procedure
+
+```sql
+CREATE PROC dbo.GetRows
+  @n AS INT = 10
+AS
+SELECT ...
+...
+
+CREATE PROC ...
+  @to_rownum AS INT ...
+AS
+...
+INSERT
+INTO #CachedPages
+    EXEC dbo.GetRows
+      @n = @to_rownum::set proc argument @n to @to_rownum;
+...
+```
+
+### SQLite { .tabset .tabset-fade .tabset-pills }
+
+#### Overview
+
+Simple embedded sql dialect. Usable in just about any embedded software!!
+
+#### run code for db
+
+from command line
+
+```sql
+sqlite3 ex2.db < ex2.sql
+```
+
+#### print schema from db
+
+from command line
+
+```sql
+sqlite3 ex2.db .schema
+```
+
+```sql
+CREATE TABLE person (
+  id INTEGER PRIMARY KEY,
+  first_name TEXT,
+  last_name TEXT,
+  age INTEGER
+);
+CREATE TABLE pet (
+  id INTEGER PRIMARY KEY,
+  name TEXT,
+  breed TEXT,
+  age INTEGER,
+  dead INTEGER
+);
+CREATE TABLE person_pet (
+  person_id INTEGER,
+  pet_id INTEGER
+);
+```
+
+
