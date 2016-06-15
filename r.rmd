@@ -49,8 +49,68 @@ Section for good helper functions.
 inspired by ruby's `%w`
 
 ```{r}
+library(magrittr)
 wordArray <- function(string){ string %>% strsplit("[[:space:]]+") %>% unlist }
 "carat color value" %>% wordArray
+```
+
+#### dataDivision
+
+Divide by zero with set default
+
+```{r}
+library(magrittr)
+dataDivision <- function(numerator, denominator, divZero = NA){
+  ( numerator / denominator ) %>%
+   { ifelse(is.finite(.), ., divZero) }
+}
+dataDivision(10,2)
+dataDivision(10,0)
+```
+
+#### getFactors
+
+extract factor columns from data frame.
+
+```{r}
+library(magrittr)
+getFactors <- function(dataFrame){
+  dataFrame %>%
+    names %>%
+    sapply(function(colName){
+             dataFrame %>%
+               getElement(colName) %>%
+               is.factor
+    }) %>%
+    dataFrame[,.]
+}
+exams <-
+  expand.grid(res = c("Y", "N"),
+              score = 1:4,
+              id = LETTERS[1:5])
+exams %>% head %T>% print %>% getFactors
+```
+
+#### Diagonal proportion of a matrix
+
+returns if object is square shaped i.e. number of rows and columns are the equal
+
+```{r}
+isSquareShaped <- function(object) { equals(ncol(object), nrow(object)) }
+```
+
+calculates the diagonal proportion in a square-shaped object
+
+```{r}
+diagonalProportion <-
+  function(object){
+    if(object %>% isSquareShaped %>% not){
+      warning("calculating the diagonal proportion only applies to squared objects")
+      return(0)
+    }
+    divide_by(object %>% diag %>% sum,
+              object %>% sum)}
+(diag(3) + 0.5) %T>% print %>% diagonalProportion
 ```
 
 ### 雑多 {.tabset .tabset-fade .tabset-pills}
@@ -295,6 +355,35 @@ airquality %>% head %>% select(one_of(columns))
 # airquality %>% head %>% select_(one_of(columns)) # ERRORS: can not find function `one_of`
 ```
 
+#### cumulatively sum within a group
+
+Cumulativily sum the `carb` column within each `am`-group
+
+```{r}
+require(magrittr)
+require(dplyr)
+mtcars %>%
+  filter(cyl == "6") %>%
+  select(carb, gear, am) %>%
+  group_by(am) %>%
+  arrange(am)
+
+.Last.value %>%
+  do(cumsum(.["carb"]))
+```
+
+#### list to data.frame
+
+given a list of data frames. use `Reduce` to bind them togetherq
+
+```{r}
+library(magrittr)
+library(dplyr)
+c(3, 6, 12) %>%
+  lapply(function(day){ airquality %>% filter(Day == day) }) %>%
+  Reduce(rbind, .)
+```
+
 ### Plots {.tabset .tabset-fade .tabset-pills}
 
 #### Overview
@@ -333,7 +422,6 @@ require(ggplot2)
 
 #### Facet grid
 
-
 - use the formula to tell how and what you want to stratify the data on.
 - Plot is split differently if `Species` is on the x-side
 - some added smoothing
@@ -343,7 +431,8 @@ require(ggplot2)
 ( ggplot(iris, aes(y = Sepal.Length,
                    x = Sepal.Width))
   + facet_grid(Species ~ .)
-  + geom_smooth())
+  + geom_smooth()
+  )
 ```
 
 #### Matrices {.tabset .tabset-fade .tabset-pills}
@@ -523,6 +612,35 @@ Depricated.
 ```{r}
 # require(ggplot2)
 # plotmatrix(with(iris, data.frame(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width)))
+```
+
+#### ggplot2 with multiple datasets and colors
+
+```{r}
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+dpassed <- rep(c("Yes", "No"), each=1000)
+dspeed <- c(rnorm(1000, 2),
+           rnorm(1000, 1))
+lvlData <- data.frame(passed = dpassed, speed = dspeed)
+samples <- factor(c("Passed", "Total"))
+# TODO: FIX ME
+# (
+#   ggplot(lvlData %>% filter(passed == "Yes"),
+#          aes(x=speed, color="Sample", shape="Sample", linetype="Sample"))
+#   + stat_ecdf(data=lvlData,
+#               aes(x=speed, color="Total", shape="Total", linetype="Total"))
+#   + stat_ecdf(aes(color="Passed", shape="Passed", linetype="Passed"))
+#   + xlab("")
+#   + ylab("inclusion")
+#   + labs(title="Average days to completion")
+#   + scale_color_manual(breaks=samples, values=c("green", "red"))
+#   + scale_shape_manual(breaks=samples, values=c(16, 16))
+#   + scale_linetype_manual(breaks=samples, values=c(1, 1))
+#   + labs(color = "dataset")
+#   + theme(legend.title=element_blank())
+# )
 ```
 
 ### Tests {.tabset .tabset-fade .tabset-pills}
