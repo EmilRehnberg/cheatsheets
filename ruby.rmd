@@ -1,0 +1,67 @@
+
+---
+title: "Ruby cheatsheet"
+author: Emil Rehnberg
+bibliography: refs.bib
+csl: shiki.csl
+output:
+  pdf_document:
+    highlight: zenburn
+  html_document:
+    toc_float: TRUE
+    css: styles.css
+---
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 200)
+```
+
+```{r echo=FALSE, eval=FALSE}
+library(rmarkdown); library(shiny)
+rmdFilePath <- "ruby.rmd"
+allexamples <- FALSE
+rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
+```
+
+```{r echo=FALSE, message=FALSE}
+set.seed(308)
+library(magrittr)
+```
+
+## 目的
+
+Cheatsheet for Ruby. It's a place to dump typical annotated Ruby-code.
+
+## Tricks { .tabset .tabset-fade .tabset-pills }
+
+### Overview
+
+All kinds of shit.
+
+### class accessor
+
+this is possible but not ideal (Avdi)
+
+```rb
+class MyLib
+  class << self
+    attr_accessor :logger
+  end
+end
+MyLib.logger = Logger.new($stderr)
+```
+
+instead write the accessors yourself!
+
+```rb
+class MyLib
+  def self.logger
+    @logger ||= Logger.new($stderr)
+  end
+
+  def self.logger=(new_logger)
+    @logger = new_logger
+  end
+end
+```
+
