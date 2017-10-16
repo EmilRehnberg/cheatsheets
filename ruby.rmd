@@ -17,9 +17,8 @@ options(width = 200)
 ```
 
 ```{r echo=FALSE, eval=FALSE}
-library(rmarkdown); library(shiny)
+library(shiny)
 rmdFilePath <- "ruby.rmd"
-allexamples <- FALSE
 rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
 ```
 
@@ -36,7 +35,36 @@ Cheatsheet for Ruby. It's a place to dump typical annotated Ruby-code.
 
 ### Overview
 
-All kinds of shit.
+Tricks in vanilla ruby.
+
+### Logging to file
+
+```rb
+#!/usr/bin/env ruby
+
+if __FILE__ == $0
+  $stdout.reopen("out.txt", "w")
+  $stderr.reopen("err.txt", "w")
+
+  puts "runing R sesh"
+  puts %x{Rscript rr.R}
+  "kenny florian finish fights"
+end
+```
+
+perhaps in combination with `rr.R`
+
+```R
+#!/bin/usr/env Rscript
+
+sink(stdout(), type="message")
+message("message: testing 12")
+warning("achtung: deutchen furher")
+error("E$ failure") # doesn't work, using `stop` if you want to send error messages and stop the execution.
+```
+
+[ruby source](https://stackoverflow.com/questions/3018595/how-do-i-redirect-stderr-and-stdout-to-file-for-a-ruby-script)
+[r source](http://mazamascience.com/WorkingWithData/?p=888)
 
 ### class accessor
 
@@ -64,4 +92,107 @@ class MyLib
   end
 end
 ```
+
+### all combinations for a vector
+
+```rb
+a = [1, 2, 3]
+a
+  .each_index
+  .map(&a.method(:rotate))
+```
+
+## rspec { .tabset .tabset-fade .tabset-pills }
+
+### Overview
+
+section for rspec stuff.
+
+### tags
+
+in `greeter_spec`
+
+```rb
+  it 'says "Hello"', :wip do
+    raise unless greeter.msg == 'Hello'
+  done
+```
+
+only exec specs wip tags
+
+```sh
+rspec --tag wip greeter_spec.rb
+```
+
+use `~wip` to run specs w/o the `wip` tag
+
+## sucker-punch
+
+concurrent execution in ruby. based on `concurrent-ruby`
+
+```rb
+#!/usr/bin/env ruby
+
+require 'logger'
+require 'sucker_punch'
+
+class Shirshasana
+  def perform
+    puts "stay 24 breaths. should be 12 mins in total"
+    sleep(1)
+  end
+end
+
+class Padmasana
+  def perform
+    puts "stay 10 breaths. count the breaths using your mala."
+    sleep(1)
+  end
+end
+
+class AsanaPractioner
+  ASANA_LOOKUP ={
+    shirshasana: Shirshasana.new,
+    padmasana: Padmasana.new
+  }
+
+  def initialize(asana_name)
+    @asana = ASANA_LOOKUP[asana_name]
+  end
+
+  def perform
+    @asana.perform
+  end
+end
+
+class Practice
+  include SuckerPunch::Job
+  workers 2
+
+  def perform(asana_name, log)
+    log.debug(AsanaPractioner.new(asana_name).perform)
+  end
+end
+
+if __FILE__ == $0
+
+  puts "performing shirshasana"
+  shirshasana_log = Logger.new("/tmp/shirshasana.log", 'monthly')
+  Practice.perform_async(:shirshasana, shirshasana_log)
+  Practice.perform_async(:shirshasana, shirshasana_log)
+  Practice.perform_async(:shirshasana, shirshasana_log)
+  Practice.perform_async(:shirshasana, shirshasana_log)
+  Practice.perform_async(:shirshasana, shirshasana_log)
+
+  puts "performing padmasana"
+  padmasana_log = Logger.new("/tmp/padmasana.log", 'monthly')
+  Practice.perform_async(:padmasana, padmasana_log)
+  Practice.perform_async(:padmasana, padmasana_log)
+  Practice.perform_async(:padmasana, padmasana_log)
+  Practice.perform_async(:padmasana, padmasana_log)
+
+  puts "finished"
+end
+```
+
 
