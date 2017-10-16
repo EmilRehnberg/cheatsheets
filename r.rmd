@@ -3,6 +3,7 @@
 title: "R cheatsheet"
 author: Emil Rehnberg
 bibliography: refs.bib
+date: "`r Sys.Date()`"
 csl: shiki.csl
 output:
   pdf_document:
@@ -21,6 +22,17 @@ require(rmarkdown); require(shiny)
 rmdFilePath <- "r.rmd"
 allexamples <- FALSE
 rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
+
+# TODO
+# From Chase code:
+# - dealing with Reduce and row.names (use row.names = NULL in data.frame)
+# - use factors to get all the counts you want in a table
+# - workflow with categories of words to category counts
+#   - using reverse naming etc to create the word-category lookup table
+```
+
+```{r, eval=FALSE, echo = FALSE}
+devtools::install_github('cran/colorout')
 ```
 
 ```{r echo=FALSE, message=FALSE}
@@ -32,19 +44,2002 @@ require(magrittr)
 require(ggplot2)
 ```
 
+```{r "initiate polymorphic exclude", echo = FALSE}
+include <- function(obj, elms) UseMethod("include")
+exclude <- function(obj, elms) UseMethod("exclude")
+```
+
 ## 目的
 
 cheatsheet for R. it's a place to dump typical annotated R-code.
 
-## Cheats
+## Data {.tabset .tabset-fade .tabset-pills}
 
-### Helpers {.tabset .tabset-fade .tabset-pills}
+### Overview
 
-#### Overview
+`R` has several open datasets
+
+### numerical
+
+```{r}
+library(magrittr)
+airquality %>% str
+mtcars %>% str
+USArrests %>% str
+```
+
+### Time-series
+
+```{r}
+AirPassengers %>% str
+Nile %>% str
+freeny %>% str # with numerical variables also!
+```
+
+### factors
+
+```{r}
+CO2 %>% str
+ChickWeight %>% str # Ord.factor ordinal factor!
+esoph %>% str # multiple Ord.factor
+iris %>% str
+npk %>% str
+warpbreaks %>% str
+# library(randomForest)
+# data(imports85)
+# imports85 %>% str # factors & ord.factor
+```
+
+### lists
+
+```{r}
+Harman23.cor %>% str
+```
+
+### tables
+
+multidimensional tables!
+
+```{r}
+Titanic %>% str
+```
+
+### Survival data suitable data
+
+```{r}
+data("GBSG2", package = "TH.data")
+GBSG2 %>% str
+with(GBSG2, { survival::Surv(time, cens) }) %>% head(10)
+```
+
+## Standard Libraries {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Looking at functions from e.g. `base` and `stats` packages that are loaded by default R.
+
+### Allocation
+
+as in allocation of empty objects / place holders
+
+```{r "place holder allocation"}
+vector("integer", 6)
+vector("double", 7)
+vector("character", 8)
+vector("logical", 3)
+```
+
+### loading / unloading packages
+
+in order to attach / load / require packages use `library` (or `require` if you like problems).
+
+to detach / unload / remove a package from a session you can use `detach`
+
+```{r}
+exists("is_in") # from magrittr package
+detach(package:magrittr)
+exists("is_in")
+library(magrittr)
+exists("is_in")
+```
+
+### File Manipulation
+
+Working with files. Checking existance, copy `cp`, removing `rm`, appending etc.
+
+```{r "file-manipulation"}
+library(magrittr)
+tmpDir <- file.path("", "tmp", "r-file-manipulation")
+dir.exists(tmpDir)
+dir.create(tmpDir)
+dir.exists(tmpDir)
+list.files(tmpDir) # return empty character atomic vector
+
+filePath1 <- tmpDir %>% file.path("A.md")
+filePath2 <- tmpDir %>% file.path("B.md")
+filePath3 <- tmpDir %>% file.path("C.md")
+cat("file A\n", file = filePath1)
+file.exists(filePath2)
+cat("file B\n", file = filePath2)
+file.exists(filePath2)
+file.append(filePath1, filePath2)
+file.info(filePath1)
+# file.show(filePath1) # opens file, only run if in an interactive session
+file.copy(filePath1, filePath3)
+file.remove(filePath1, filePath2, filePath3)
+file.remove(tmpDir) # works on EMPTY directories
+```
+
+### Extract
+
+aka `[`. Use `drop` to keep the matrix.
+
+```{r "base:extract"}
+(m <- matrix(1:9, nrow = 3, dimnames = list(c("a", "b", "c"), LETTERS[1:3])))
+m[1, ] # first row of m (atomic vector)
+m[1, , drop = FALSE] # first row of m still as matrix
+```
+
+### ellipsis
+
+`...` / ellipsis or "dot-dot-dot"
+
+use an arbitrary number of arguments to a function
+
+```{r}
+a <- c(1,  2,  NA, 4, NA)
+b <- c(NA, NA, NA, 5, 6)
+c <- c(7,  8,  NA, 9, 10)
+```
+
+catch the arguments in a list
+
+```{r}
+elTrail1 <- function(...) list(...)
+```
+catch the arguments in a data frame
+
+```{r}
+elTrail2 <- function(...) data.frame(...)
+```
+
+extract the first argument
+
+```{r}
+elTrail3 <- function(...) ..1
+```
+
+extract the second argument
+
+```{r}
+elTrail4 <- function(...) ..2
+```
+
+### replications
+
+replicate elements of vectors and lists
+
+```{r "base::rep"}
+rep(1:4, 2)
+rep(1:4, each = 2)       # not the same.
+rep(1:4, c(2,2,2,2))     # same as second.
+rep(1:4, c(2,1,2,1))
+rep(1:4, each = 2, len = 4)    # first 4 only.
+rep(1:4, each = 2, len = 10)   # 8 integers plus two recycled 1's.
+rep(1:4, each = 2, times = 3)  # length 24, 3 complete replications
+
+(x <- LETTERS[1:4] %>% setNames(letters[1:4]) %>% as.factor)
+rep(x, times = 2)
+rep(x, each = 2)
+rep.int(x, times = 2)  # no names
+rep(x, len = 10)
+rep_len(x, length.out = 10) # no names
+```
+
+### iterate over data frame variables
+
+use `base::seq_along` in a for loop to iterate over a data frame's variables / columns
+
+```{r}
+(scaledArrests <- USArrests) %>% head
+for(i in seq_along(USArrests)){
+  scaledArrests[[i]] <- scale(USArrests[[i]]) %>% round(3)
+}
+scaledArrests %>% head
+```
+
+be aware that the same thing (minus the row names) can be acheived much more nicely with `sapply`
+
+```{r}
+USArrests %>% sapply(scale) %>% as.data.frame %>% head
+```
+
+### reduce function
+
+`base::Reduce`
+
+Common Higher-Order Functions in Functional Programming Languages (similar to Common Lisp's `(reduce)`)
+
+Simple example
+
+```{r}
+add <- function(x) Reduce("+", x)
+add(1:4)
+```
+
+Custom cumulative function. Approximation for pi. `right` argument determines if process starts from the right (or from the left).
+
+```{r}
+c(3, 7, 15, 1, 292) %>%
+  Reduce(f = function(incr, acc) incr + 1 / acc, right = TRUE)
+```
+
+### pattern matching
+
+`base::switch`
+
+pattern matching in R
+
+```{r}
+centre <- function(x, type) {
+  switch(type,
+         mean = mean(x),
+         median = median(x),
+         trimmed = mean(x, trim = .1))
+}
+x <- rcauchy(10)
+centre(x, "mean")
+centre(x, "median")
+centre(x, "trimmed")
+```
+
+### split df to list
+
+e.g. split a `data.frame`, rows / observations to list. NOTE: second argument is a "group" e.g. `1:10`. If you in this case have a data frame with ten rows, each row will be in an entry in the returned list.
+
+```{r}
+data.frame(a = 1:10
+           ,b = 11:20
+           ,c = 51:60) %>%
+  split(seq(nrow(.)))
+```
+
+or by some other grouping
+
+```{r}
+split(airquality, airquality$Month)
+```
+
+### dump object to executable R code
+
+`dput` is your friend
+
+there's some gotchas though. When you're dumping a factor - the output might end up crazy long. Use `as.character` to get what you're looking for.
+
+```{r "dput gotcha"}
+library(dplyr)
+(USArrests %<>% mutate(state = USArrests %>% row.names %>% as.factor)) %>% str
+USArrests$state %>% head(2) %>% dput
+USArrests$state %>% head(2) %>% as.character %>% dput
+```
+
+### parse CL args
+
+parsing command line arguments / parameters
+
+- use `#!/usr/bin/env Rscript` on top of the executable file (`tca.r` let's say)
+- call `./tca.r --args a=1 name=\'Billy\'`
+- use the `commandArgs`, `parse` and `eval` functions to read the parameters into your script
+
+```{r}
+library(magrittr)
+arguments <- c("a=1", "name=\'Billy\'") # commandArgs(trailingOnly = TRUE)
+for(argument in arguments){
+  eval(parse(text = argument))
+}
+```
+
+### work inside closed data environment
+
+`base::with` and `base::within`
+
+```{r}
+with(airquality, { cor(Temp, Ozone, use = "complete") })
+
+aq <- within(airquality, {     # Notice that multiple vars can be changed
+    lOzone <- log(Ozone)
+    Month <- factor(month.abb[Month])
+    cTemp <- round((Temp - 32) * 5/9, 1) # From Fahrenheit to Celsius
+    S.cT <- Solar.R / cTemp  # using the newly created variable
+    rm(Day, Temp)
+})
+head(aq)
+```
+
+### system information
+
+invoke system calls / command line. check system info and library / package info.
+
+```{r "OS calls"}
+system("date")
+system("echo $USER")
+
+Sys.getenv()
+
+Sys.info() %>% as.matrix
+
+.libPaths()
+# useful for installing packages to a specific library / folder
+# install.packages("magrittr", lib = .libPaths()[2])
+# default lib parameter is .libPaths()[1] which tends to be user specific
+
+# R_LIBS_USER sets the personal library for a user
+# Sys.unsetenv("R_LIBS_USER")
+# can unset this so you use a global library path instead
+
+# R home
+R.home()
+Sys.getenv("R_HOME")
+```
+
+### Citation
+
+```{r message=FALSE}
+require(magrittr)
+```
+
+```{r}
+citation() %>% toBibtex # defaults to R-documentation
+citation("magrittr") %>% toBibtex
+```
+
+### package version
+
+check the version of an available package
+
+```{r "packageVersion"}
+packageVersion("magrittr")
+```
+
+### set reference level
+
+`stats:relevel`
+
+to set reference/base/stardard/default level for e.g. a logistic regression use `relevel` with the `ref` flag
+
+```{r}
+warpbreaks %>% str
+warpbreaks$tension <- relevel(warpbreaks$tension, ref = "M")
+warpbreaks %>% str
+```
+
+### scientific notation
+
+print in scientific notation
+
+```{r}
+library(magrittr)
+1234567890123
+123456
+123456 %>% format(scientific = TRUE)
+```
+
+you can also tinker with the `options(scipen=)` option
+
+### print declared variable
+
+use parentheses to return / print result during variable declaration
+
+```{r}
+(a <- 1)
+a
+```
+
+### dicotomize
+
+discretize continuous variable. (turn continuous variable discrete)
+
+```{r}
+Z <- stats::rnorm(10000)
+table(cut(Z, breaks = -6:6))
+
+breaks <- c(-3, 1, 5) # one more break than labels
+labels <- c("low", "high")
+U <- runif(10, min=-3, max=5)
+cut(U,
+    breaks = breaks,
+    labels = labels,
+    ordered_result = TRUE, # for ordered factors (not always well supported)
+    include.lowest = TRUE)
+```
+
+### Environments
+
+```{r}
+exists("abc")
+abc <- 2
+exists("abc")
+exists("pi", envir = emptyenv())
+exists("glm", envir = as.environment("package:base"))
+exists("glm", envir = as.environment("package:stats"))
+```
+
+### matching
+
+`match` et. al match on the first character forward.
+
+```{r}
+1:10 %in% c(1,3,5,9)
+charmatch("m",   c("mean", "median", "mode"))
+charmatch("med", c("mean", "median", "mode"))
+```
+
+#### using grep
+
+matching character strings/vectors using regexes or character strings. use `value` flag to return the actual matches and not the index.
+
+```{r}
+txt <- c("arm", "foot", "lefroo", "bafoobar")
+grep("foo", txt)
+grep("foo", txt, value = TRUE)
+```
+
+matching two exact expressions, either or
+
+```{r}
+library(magrittr)
+txt <-
+  c( "The", "licenses", "for", "most", "software", "are", "designed", "to", "take", "away", "your", "freedom", "to", "share"
+    ,"and", "change", "it.", "", "By", "contrast,", "the", "GNU", "General", "Public", "License", "is", "intended", "to"
+    ,"guarantee", "your", "freedom", "to", "share", "and", "change", "free", "software", "--", "to", "make", "sure"
+    ,"the", "software", "is", "free", "for", "all", "its", "users")
+```
+
+returns index
+
+```{r}
+txt %>% grep(pattern = "ak")
+txt %>% grep(pattern = "ak|an")
+```
+
+returns value
+
+```{r}
+txt %>% grep(pattern = "ak", value = TRUE)
+txt %>% grep(pattern = "ak|an", value = TRUE)
+```
+
+returns logical (grep logical)
+
+```{r}
+txt %>% grepl(pattern = "ak")
+txt %>% grepl(pattern = "ak|an")
+```
+
+matching on multiple character strings inside the same character string
+
+```{r}
+txt %>% grep(pattern = "s.*ar", value = TRUE)
+
+txt %>% grep(pattern = "ra", value = TRUE)
+txt %>% grep(pattern = "n.*ra", value = TRUE)
+```
+
+matching on end of string by using dollar sign `$` at the end of the pattern
+
+```{r}
+strs <-
+  c("Product.Age", "Salesforce.Center", "Category", "Standard.Months",
+    "FY15.10", "FY15.11", "FY15.12", "FY16.01", "FY16.02", "FY16.03",
+    "FY16.04", "ofc-FY16.05", "ofc-FY16.06", "FY16.07", "ofc-FY16.08", "FY16.09",
+    "FY16.10", "FY16.11", "FY16.12", "FY17.01", "FY17.02", "FY17.03",
+    "FY17.04", "FY17.05", "FY17.06", "FY15.09.1",
+    "FY15.10.1", "FY15.11.1", "FY15.12.1", "FY16.01.1", "FY16.02.1",
+    "FY16.03.1", "FY16.04.1", "ofc-FY16.05.1", "ofc-FY16.06.1", "FY16.07.1",
+    "FY16.08.1", "FY16.09.1", "FY16.10.1", "ofc-FY16.11.1", "ofc-FY16.12.1",
+    "FY17.01.1", "FY17.02.1", "FY17.03.1", "FY17.04.1", "FY17.05.1",
+    "FY17.06.1")
+strs %>% grep(pattern = "(FY\\d{2}).(\\d{2})$", value = TRUE)
+```
+
+matching on start of string by using caret `^` at the start of the pattern
+
+```{r}
+strs %>% grep(pattern = "^(FY\\d{2}).(\\d{2})$", value = TRUE)
+```
+
+### padding
+
+padding with zeros
+
+```{r}
+sprintf("%04d", 20)
+```
+
+or less stable
+
+```{r}
+sprintf("%02s", c("10", "8", "12"))
+```
+
+### substr
+
+can extract characters based on position
+
+```{r}
+c('201611', '201304') %>% substr(5,6)
+c('201611', '201304') %>% substr(1,4)
+```
+
+Can be working similar to T-SQL's `LEFT`-function. No need to use regex
+
+Can also be thought of as deleting parts of strings / characters.
+
+### numerical characteristics of the machine
+
+`.Machine` has a lot of numerical characteristics
+
+e.g. the rounding error
+
+```{r}
+.Machine$double.eps
+.Machine
+```
+
+### setting names for arrays
+
+use `stats::setNames`
+
+```{r}
+setNames( 1:3, c("foo", "bar", "baz") )
+setNames( 1:3, nm = c("foo", "bar", "baz") )
+setNames( nm = c("foo", "bar", "baz") ) # Special case
+```
+
+or `base::structure`; NOTE: you need to name any arguments, unlike `setNames`.
+
+```{r}
+structure( 1:3, nm = c("foo", "bar", "baz") ) # don't use `nm`
+structure( 1:3, names = c("foo", "bar", "baz") )
+# structure( 1:3, c("foo", "bar", "baz") ) # Error in structure(1:3, c("foo", "bar", "baz")) : attributes must be named
+```
+
+### error handling
+
+use `tryCatch`
+
+with error handler
+
+```{r echo = TRUE}
+library(magrittr)
+myError <- simpleError("エッラー！")
+
+tryCatch({
+  print(1);
+  stop(myError)
+  print(2)
+}, error = function(err){
+  message("error function messages:")
+  (err %>% print)
+}, finally = {
+  print("always finish run with finally()")
+  message("finished tryCatch")
+})
+```
+
+with warning handler
+
+```{r}
+tryCatch({
+  print(1)
+  warning("ACHTUNG! ACHTUNG!")
+  print(2)
+}, warning = function(war){
+  message("warning function messages:")
+  (war %>% print)
+}, finally = {
+  print("always finish run with finally()")
+  message("finished tryCatch")
+})
+```
+
+`stop` returns exit code 1 (check with `$?` in ruby and `$?.exitstatus` especially)
+
+you can also use the `tools` package. but `pskill` does not returns a 0 exit status. `pskill` seems to be rather rough around the edges, use with care.
+
+```{r}
+# tools::pskill(Sys.getpid(), tools::SIGINT)
+```
+
+## glue {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Section for string interpolation package
+
+### glue
+
+main function for string interpolation similar to how it works in Ruby.
+
+```{r}
+abc = "DADDY"
+glue::glue("Who's your {abc}?")
+
+name <- "Fred"
+age <- 50
+anniversary <- as.Date("1991-10-12")
+glue::glue(
+  'My name is {name},',
+  'my age next year is {age + 1},',
+  'my anniversary is {format(anniversary, "%A, %B %d, %Y")}.')
+
+# single braces can be inserted by doubling them
+glue::glue("My name is {name}, not {{name}}.")
+
+# Named arguments can also be supplied
+glue::glue(
+  'My name is {name},',
+  ' my age next year is {age + 1},',
+  ' my anniversary is {format(anniversary, "%A, %B %d, %Y")}.',
+  name = "Joe",
+  age = 40,
+  anniversary = as.Date("2001-10-12"))
+
+# `glue_data()` is useful in magrittr pipes
+mtcars %>% glue::glue_data("{rownames(.)} has {hp} hp")
+
+# Alternative delimiters can also be used if needed
+one <- "1"
+glue::glue("The value of $e^{2\\pi i}$ is $<<one>>$.", .open = "<<", .close = ">>")
+```
+
+### quoting
+
+there's `single_quote`, `double_quote` and `backtick` functions for surrounding the argument with the select quote. Also there's `collapse` that works similar to how it works in `paste`.
+
+```{r}
+x <- 1:5
+glue::glue('Values of x: {glue::collapse(glue::backtick(x), sep = ", ", last = " and ")}')
+```
+
+## devtools {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Section for devtools basics and qwirks. Use it for creating packages, downloading them etc.
+
+### install.github
+
+install packages from github
+
+```{r "devtools::install_github", eval = FALSE}
+devtools::install_github("cran/purrr")
+devtools::install_github("hadley/stringr")
+```
+
+### create
+
+generates a R-package template
+
+```{r "devtools::create", eval = FALSE}
+devtools::create("path/to/package/pkgname")
+devtools::create("~/code/R/packages/niftytools")
+```
+
+### add imports
+
+adds `magrittr` dependency to import field to DESCRIPTION file in a package
+
+```{r "devtools::use_package", eval = FALSE}
+devtools::use_package("magrittr")
+```
+
+### document
+
+writes roxygen2 documentation, writing NAMESPACE and .Rd (documentation) files.
+
+```{r "devtools::document", eval = FALSE}
+devtools::load_all()
+devtools::document()
+```
+
+### load package contents
+
+Use `devtools::load_all()` function to load the package during development.
+
+### using testthat
+
+Run `devtools::use_testthat()` to set-up testing during package development.
+
+### run tests
+
+Run `devtools::test()` to run the package tests.
+
+## testthat {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Section for all things hadley's testing package `testthat`.
+
+### tests
+
+No news is good news. successful test silently return the first argument.
+
+- `expect_identical` tests with `identical`
+- `expect_equal` tests with `all.equal`
+- `expect_equivalent` tests with `all.equal` and `check.attributes = FALSE`
+- with multiple assertions in the same `it`-block, all assertions are tested and any false assertion gets reported
+
+```{r "testthat tests"}
+# library(testthat)
+
+# testing equality
+a <- 10
+testthat::expect_equal(a, 10)
+testthat::expect_equal(10L, 10)
+# Use expect_equal() when testing for numeric equality
+testthat::expect_equal(sqrt(2) ^ 2, 2)
+
+# testing logical return
+testthat::expect_true(2 == 2)
+testthat::expect_false(2 != 2)
+
+# greater/less than tests
+a <- 9
+testthat::expect_lt(a, 10)
+testthat::expect_lte(a, 9)
+testthat::expect_gt(a, 8)
+testthat::expect_gte(a, 9)
+
+# regex match test
+testthat::expect_match("Testing is fun", "f.n")
+
+# type and class tests
+testthat::expect_null(NULL)
+testthat::expect_type(1, "double") # type test
+testthat::expect_is(1, "numeric")  # class test
+
+testthat::expect_length(1:10, 10)
+
+# output expectations
+testthat::expect_output(str(mtcars), "32 obs")
+testthat::expect_output(str(mtcars), "11 variables")
+testthat::expect_output(str(mtcars), "11 VARIABLES", ignore.case = TRUE) # extra arguments are sent to grepl
+# -- Messages
+f <- function(x) {
+  if (x < 0) message("*x* is already negative")
+  -x
+}
+testthat::expect_message(f(-1))
+testthat::expect_message(f(-1), "already negative")
+testthat::expect_message(f(1), NA)
+# -- Warnings
+f <- function(x) {
+  if (x < 0) warning("*x* is already negative")
+  -x
+}
+testthat::expect_warning(f(-1))
+testthat::expect_warning(f(-1), "already negative")
+testthat::expect_warning(f(1), NA)
+## -- Errors
+f <- function() stop("My error!")
+testthat::expect_error(f())
+testthat::expect_error(f(), "My error!")
+## -- Silence
+# doesn't check silent/invisible return, but rather if there's messages/warnings/errors being output
+testthat::expect_silent("123")
+
+# failure expectation
+testthat::expect_failure(testthat::expect_identical(1, 1L))
+```
+
+### stubs
+
+implemented with `testthat::with_mock`
+
+```{r "with_mock"}
+testthat::with_mock(
+   all.equal = function(x, y, ...) TRUE
+  ,testthat::expect_equal(2 * 3, 4) # silently returns the return of the first argument
+  ,.env = "base"
+) # return the output of the last expression
+
+testthat::with_mock(
+   `base::identical` = function(x, y, ...) TRUE
+  ,testthat::expect_identical(3, 5)
+  ,testthat::expect_identical(TRUE, 6)
+)
+```
+
+## dplyr {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Section for dplyr basics and qwirks
+
+### programming
+
+evaluating variable names and values. This is for dplyr 6.0+
+
+```{r "dplyr programming"}
+
+# dplyr filter is a little bit qwirkier
+dta <- data.frame(
+   v1 = sample(5,10, replace = TRUE)
+  ,v2 = sample(5,10, replace = TRUE)
+)
+
+# Note the parentheses around the quo eval, it's required in this situation
+myVar <- rlang::quo(v1)
+dta %>% dplyr::filter((!!myVar) == 1)
+# while not required in this situation
+myVal <- 1
+dta %>% dplyr::filter(v1 == !!myVal)
+
+# not that col is a string / character
+which_col <- "v1"
+which_val <- 1
+
+dta %>% dplyr::filter((!!rlang::sym(which_col))==which_val)
+#OR
+dta %>% dplyr::filter(UQ(rlang::sym(which_col))==which_val)
+
+# old syntax still works
+dta %>% dplyr::filter_(.dots= paste0(which_col, "== ", which_val))
+
+```
+
+### subsetting rows
+
+observations
+
+```{r "dplyr filter"}
+dplyr::filter(iris, Sepal.Length > 7)
+```
+
+remove duplicate rows
+
+```{r "dplyr distinct"}
+iris %>% str
+dplyr::distinct(iris) %>% str
+```
+
+Randomly select fraction of rows.
+
+```{r "dplyr sample_frac"}
+dplyr::sample_frac(iris, 0.05, replace = TRUE)
+```
+
+Randomly select n rows.
+
+```{r "dplyr sample_n"}
+dplyr::sample_n(iris, 10, replace = TRUE)
+```
+
+Select rows by position.
+
+```{r "dplyr slice"}
+dplyr::slice(iris, 10:15)
+```
+
+Select top n rows based on some column
+
+```{r "dplyr top_n"}
+CO2 %>% top_n(2, uptake)  # select top 2 observations with highest uptake
+CO2 %>% top_n(2, conc)    # conc has a lot of ties
+CO2 %>% top_n(2, -uptake) # select top 2 observations with LOWest uptake
+```
+
+### selects
+
+- different ways of using `dplyr::select`
+- use array with `one_of` to select columns from data frame
+
+```{r}
+library(magrittr); library(dplyr)
+airquality %>% head %>% select(Temp, Wind)
+airquality %>% head %>% select_("Temp", "Wind")
+var1 <- "Temp"; var2 <- "Wind"
+airquality %>% head %>% select_(var1, var2)
+
+wordArray <- function(string){ string %>% strsplit("[[:space:]]+") %>% unlist }
+columns <- "Temp Wind" %>% wordArray
+airquality %>% head %>% select(one_of(columns))
+# airquality %>% head %>% select_(one_of(columns)) # ERRORS: can not find function `one_of`
+```
+
+### filter
+
+If you get weird time-series results then standard library `filter` is most likely first in the namespace.
+
+Use `%in%` or `is_in` for filtering on multiple items.
+
+```{r}
+library(dplyr)
+set.seed(12)
+threshold <- 0.7
+dts <- data.frame(a1 = runif(20) %>% round(1), b1 = runif(20) %>% round(1))
+dts %<>% mutate(b1Lvl = b1 %>% cut(breaks =c(0, threshold, 1), include.lowest = TRUE, labels = c("low", "high")) )
+
+dts %>% filter(a1 %>% is_in(c(0, 0.2)))
+dts %>% filter(a1 %in% c(0, 0.2))
+
+dts %>% filter_("b1 > .7")
+dts %>% filter_(paste("b1 >", threshold))
+dts %>% filter_("b1Lvl == 'high'")
+asQuoted <- function(arg) paste0("'", arg, "'")
+b1Level <- "high"
+dts %>% filter_(paste("b1Lvl == ", b1Level %>% asQuoted))
+```
+
+## rlang {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Overview for the `rlang` package. `quo` function is also imported by `dplyr`.
+
+### quo
+
+```{r "dplyr and quo"}
+rlang::quo(paste(letters[1:3], collapse = "+")) # doesn't work
+rlang::quo(!!paste(letters[1:3], collapse = "+"))
+
+# paste(letters[1:3], collapse = "+") %>% quo(!!.) # no magrittr piping
+
+# sending
+sortArg <- rlang::quo(cyl)
+mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!sortArg)
+
+sortArg <- rlang::quo(cyl %>% (dplyr::desc))
+mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!sortArg)
+
+# doesn't work
+# sortArg <- "cyl %>% (dplyr::desc)"
+# mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!rlang::quo(sortArg))
+```
+
+## RSQLServer {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Overview for the `RSQLServer` package, package used for connecting R and MS SQL Server
+
+### workflow
+
+```{r "RSQLServer workflow", eval = FALSE}
+oboedbConnect <- function() {
+  DBI::dbConnect(RSQLServer::SQLServer()
+                 ,server = "OBOE"
+                 ,database = "Oboe"
+                 ,file = "~/sql.yml" # file for sql settings and credentials
+                 )
+}
+
+# SELECTS and grab data
+n <- 5L
+statusQuery <- dbplyr::build_sql("SELECT TOP ", n, " * FROM [Oboe].[dbo].[BookingStatus_lkp]")
+DBI::dbGetQuery(oboedbConnect(), statusQuery)
+
+# complex SELECTS
+complicatedSelectQuery <- "
+DECLARE @nstat INTEGER = (SELECT 7);
+
+SELECT TOP (@nstat) *
+FROM [Oboe].[dbo].[BookingStatus_lkp]
+"
+DBI::dbGetQuery(oboedbConnect(), complicatedSelectQuery)
+
+# NOT run:
+# INSERTs with `dbExecute`
+DBO::dbExecute(oboedbConnect(), "INSERT INTO cars (speed, dist) VALUES (1, 1), (2, 2), (3, 3);")
+```
+
+example sql settings file
+
+```
+OBOE:
+    server: 10.XX.Y.ZZZ
+    port: &port 1433
+    type: &type sqlserver
+    user: etr
+    password: &pass blabla
+DW:
+    server: 10.RR.S.TTT
+    port: *port
+    type: *type
+    user: etr2
+    password: *pass
+```
+
+## tibble {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Overview of tibble package.
+
+### use-case
+
+use instead of `data.frame` since it's more performant and less qwirky
+
+- A `tibble` never changes the input type.
+    - No more worry of characters being automatically turned into strings.
+- A `tibble` can have columns that are lists.
+- A `tibble` can have non-standard variable names.
+    - can start with a number or contain spaces.
+    - To use this refer to these in a backtick.
+- It only recycles vectors of length 1.
+- It never creates row names.
+
+```{r "tibble"}
+library(tibble)
+
+# similar to data.frame
+a <- 1:5
+tibble(a, b = a * 2)
+
+lst(n = 5, x = runif(n))
+
+# tibble never coerces its inputs
+str(tibble(letters))
+str(tibble(x = list(diag(1), diag(2))))
+
+# or munges column names
+tibble(`a + b` = 1:5)
+
+# With the SE version, you give it a list of formulas/expressions
+tibble_(list( x = ~1:10
+             ,y = quote(x * 2)))
+```
+
+## purrr {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Overview of purrr package.
+
+### use-case
+
+- `map()` makes a list.
+- `map_lgl()` makes a logical vector.
+- `map_int()` makes an integer vector.
+- `map_dbl()` makes a double vector.
+- `map_chr()` makes a character vector.
+
+```{r "purrr use case"}
+library(purrr)
+
+mtcars %>%
+  split(.$cyl) %>% # from base R
+  map(~ lm(mpg ~ wt, data = .)) %>%
+  map(summary) %>%
+  map_dbl("r.squared")
+```
+
+### map
+
+```{r "purrr::map"}
+library(purrr)
+
+sums <-
+  mtcars %>%
+    split(.$cyl) %>% # from base R
+    map(~ lm(mpg ~ wt, data = .)) %>%
+    map(summary)
+
+sums %>% map_dbl("r.squared")
+sums %>% map_chr("r.squared")
+```
+
+to add names use pipe `set_names` after
+
+```{r "purrr::map with names"}
+sums %>% map("call") %>% purrr::set_names(paste0("CylinderCnt_", c(4,6,8)))
+```
+
+### partial
+
+Curry a function. i.e. prefill arguments for a function. by default the prefilled arguments are evaluated lazily.
+
+```{r "purrr::partial"}
+compact1 <- function(x) discard(x, is.null)
+compact2 <- partial(discard, .p = is.null)
+# and the generated source code is very similar to what we made by hand
+compact1
+compact2
+
+f <- partial(runif, n = rpois(1, 5))
+f
+f()
+f()
+# You can override this by saying .lazy = FALSE
+f <- partial(runif, n = rpois(1, 5), .lazy = FALSE)
+f
+f()
+f()
+```
+
+### prepend
+
+companion to `append`
+
+```{r purrr::prepend}
+x <- as.list(1:3)
+x %>% append("a")
+x %>% prepend("a")
+```
+
+### generate random discrete numbers
+
+```{r "purrr::rdunif"}
+rdunif(1e3, 10) %>% table
+```
+
+### reduce
+
+similar to `base::Reduce`. except the argument order makes sense :D
+
+```{r "purrr::reduce"}
+1:10 %>% reduce(`*`)
+```
+
+### rerun
+
+rerun some code and `n` times and output the result in a list of length `n`
+
+```{r "purrr::rerun"}
+3 %>% rerun(rnorm(5))
+2 %>% rerun(nrm = rnorm(3), unif = runif(3))
+```
+
+### dealing with failure
+
+use `safely` function.
+usage is very restrictive!
+
+```{r "purrr::safely"}
+safe_log <- safely(log)
+safe_log(10)
+safe_log("a")
+
+loggedList <- list(1, 10, "a") %>% map(safely(log))
+loggedList %>% str
+
+loggedList %>% transpose %>% str
+```
+
+### scalar predicates
+
+predicates for an object being of a type and being scalar (i.e. length 1)
+
+- `is_scalar_list(x)`
+- `is_scalar_atomic(x)`
+- `is_scalar_vector(x)`
+- `is_scalar_numeric(x)`
+- `is_scalar_integer(x)`
+- `is_scalar_double(x)`
+- `is_scalar_character(x)`
+- `is_scalar_logical(x)`
+
+### setting names
+
+snake case wrapper for `setNames`, tweaked defaults and stricter argument checks
+
+```{r "purrr::set_names"}
+set_names(1:4, letters[1:4])
+set_names(letters[1:4]) # names is defaulting to the vector itself
+```
+
+### splice
+
+function for appending to a list, or `splicing` all arguments into a list.
+
+probably `update_list` is preferred though due to the edge-case shown below
+
+```{r}
+# want to an arg3 to inputs
+inputs <- list(arg1 = "a", arg2 = "b")
+
+# below is not sufficient
+list(inputs, arg3 = c("c1", "c2")) %>% str()
+c(inputs, arg3 = c("c1", "c2")) %>% str()
+
+# use splice
+# splice() concatenates the elements of inputs with arg3
+splice(inputs, arg3 = c("c1", "c2")) %>% str()
+# edge-case when two elements get named the same
+splice(inputs, arg2 = c("c1", "c2")) %>% str()
+# use update_list instead
+update_list(inputs, arg2 = c("c1", "c2")) %>% str()
+
+# you can append but it's clunky
+append(inputs, list(arg3 = c("c1", "c2")))
+# or worse with a complete statement, mutating inputs
+inputs[["arg3"]] <- c("c1", "c2")
+inputs
+```
+
+### split/order/sort by list components
+
+```{r "purrr::split_by"}
+(l1 <- transpose(list(x = sample(4), y = letters[1:4])))
+l1 %>% order_by("x")
+l1 %>% sort_by("x")
+
+(l2 <- rerun(5, g = sample(2, 1), y = rdunif(5, 10)))
+l2 %>% split_by("g") %>% str()
+l2 %>% split_by("g") %>% map(. %>% map("y"))
+```
+
+### transpose
+
+transpose a list to change order of indexing of a symmetric list
+
+```{r "purrr::transpose"}
+safe_log <- safely(log)
+loggedList <- list(1, 10, "a") %>% map(safe_log)
+loggedList %>% str
+loggedList %>% transpose %>% str
+```
+
+### type predicates
+
+- `is_list(x)`
+- `is_atomic(x)`
+- `is_vector(x)`
+- `is_numeric(x)`
+- `is_integer(x)`
+- `is_double(x)`
+- `is_character(x)`
+- `is_logical(x)`
+- `is_null(x)`
+- `is_function(x)`
+
+### update a list
+
+modification of a list. similar to `splice` but can overwrite elements with same name.
+
+```{r "purrr::update_list"}
+inputs <- list(arg1 = "a", arg2 = "b")
+update_list(inputs, arg2 = c("c1", "c2")) %>% str()
+# instead of using splice
+splice(inputs, arg2 = c("c1", "c2")) %>% str()
+
+update_list(inputs, arg3 = c("c1", "c2")) %>% str()
+
+# make it a deeper list
+update_list(inputs, SpecialArguments = list(arg1 = c("c1", "c2"))) %>% str
+
+# if you add a list to list though use good old append
+spArgList <- list(specialArgs = c("c2", "c3"))
+inputs %>% update_list(spArgList) # will spit out inputs
+inputs %>% append(spArgList)
+```
+
+### when
+
+pattern match with conditions using `when`
+
+```{r "purrr::when"}
+# matching the 2nd condition
+1:10 %>%
+  when( sum(.) <=  50 ~ sum(.)
+       ,sum(.) <= 100 ~ sum(.)/2
+       ,~ 0
+       )
+
+# matching both the first and 2nd conditions > first condition wins!
+1:10 %>%
+  when( sum(.) <=   x ~ sum(.)
+       ,sum(.) <= 2*x ~ sum(.)/2
+       ,~ 0
+       ,x = 60
+       )
+
+# doesn't match the condition so run default
+iris %>%
+  subset(Sepal.Length > 10) %>%
+  when( nrow(.) > 0 ~ .
+       ,~ iris %>% head(10)
+       )
+```
+
+### iterating over multiple vectors simultaneously
+
+use `pmap` to iterate over an arbitrary number of arguments / vectors at the same time.
+
+```{r "purrr::pmap"}
+library(purrr)
+mu  <- list(5, 10, -3)
+sgm <- list(1, 5, 10)
+n   <- list(1, 3, 5)
+# with two arguments, you can use `map2`
+map2(mu, sgm, rnorm, n = 5) %>% str()
+
+# for more arguments, use a list and `pmap`
+# no names means order is significant!!
+argsList <- list(n, mu, sgm)
+argsList %>% pmap(rnorm)
+
+# use a named list for more comprehensable code
+argsList <- list(mean = mu, sd = sgm, n = n)
+argsList %>% pmap(rnorm)
+
+mu  <- list(5, 10, -3)
+sigma <- list(1, 5, 10)
+n <- list(1, 3, 5)
+args1 <- list(n, mu, sigma)
+args1 %>%
+  pmap(rnorm) %>%
+  str()
+```
+
+### walk
+
+use `walk`/`pwalk` to iterate but you're interested in the side-effect instead of the returning value.
+
+e.g. you have a list of plot objects and a list of filenames you want the plots saved to
+
+```{r "purrr:walk"}
+library(ggplot2)
+plots <- mtcars %>%
+  split(.$cyl) %>%
+  map(~ggplot(., aes(mpg, wt)) + geom_point())
+paths <- stringr::str_c(names(plots), ".pdf")
+
+pwalk(list(paths, plots), ggsave, path = tempdir())
+```
+
+### get-attr
+
+read attributes infix
+
+```{r "purrr::get-attr"}
+factor(1:3) %@% "levels"
+mtcars %@% "class"
+```
+
+### empty?
+
+`is_empty` function for vectors or lists
+
+```{r purrr::is_empty}
+is_empty(NULL)
+is_empty(list())
+is_empty(list(NULL))
+```
+
+### keep / discard / compact
+
+usually called `filter`/`select`/`find_all` and `reject`/`drop` in other languages. (these names are taken however)
+
+`compact` works well with both lists and vectors
+
+```{r "purrr::keep"}
+rep(10, 10) %>%
+  map(sample, 5) %>%
+  keep(function(x) mean(x) > 6)
+
+# Or use a formula
+rep(10, 10) %>%
+  map(sample, 5) %>%
+  keep(~ mean(.x) > 6)
+
+# Using a string instead of a function will select all list elements
+# where that subelement is TRUE
+(x <- rerun(5, a = rbernoulli(1), b = sample(10)))
+x %>% keep("a")
+x %>% discard("a")
+
+# compact keeps all non-NULL and empty items
+list( a = 1
+     ,b = NULL
+     ,c = FALSE
+     ,d = "FALSE"
+     ,e = integer()
+     ,f = character()
+     ,g = list(NULL)
+     ,h = NA
+     ) %>% compact
+
+c(1, NULL, 3, NA, 5) %>% compact
+```
+
+### conditional map
+
+use `map_if` with predicate function and `map_at` with names or index
+
+```{r "purrr::map_if"}
+iris %>%
+  map_if(is.factor, as.character) %>%
+  str()
+
+# Specify which columns to map with a numeric vector of positions:
+mtcars %>% map_at(c(1, 4, 5), as.character) %>% str()
+
+# Or with a vector of names:
+mtcars %>% map_at(c("cyl", "am"), as.character) %>% str()
+```
+
+### lmap
+
+apply a function to list-elements of a list, and must return a list. the length of the list going in can be of a different size to that one going out.
+
+```{r "purrr::lmap"}
+library(purrr)
+# Let's write a function that returns a larger list or an empty list
+# depending on some condition. This function also uses the names
+# metadata available in the attributes of the list-element
+maybe_rep <- function(e) {
+  n <- rpois(1, 2)
+  out <- rep_len(e, n)
+  if (length(out) > 0) {
+    names(out) <- paste0(names(e), seq_len(n))
+  }
+  out
+}
+
+x <- list(a = 1:4, b = letters[5:7], c = 8:9, d = letters[10])
+
+# The output size varies each time we map f()
+x %>% lmap(maybe_rep)
+
+# We can apply f() on a selected subset of x
+x %>% lmap_at(c("a", "d"), maybe_rep)
+
+# Or only where a condition is satisfied
+x %>% lmap_if(is.character, maybe_rep)
+
+# each element in the list is sent in as a list
+list(a = 1:2, b = letters[1:3]) %>% lmap(function(eal) { class(eal) %>% print; eal}) %>% invisible
+# making it possible to access the names of the list entries
+x %>% lmap(function(e) { names(e) %<>% paste0("_3"); e})
+# and you'll have to dig deeper to e.g. alter the names of the original list entries
+list(a = c(B = 2, V = 3)) %>% lmap(function(eal) {names(eal[[1]]) %<>% paste0(0); eal})
+```
+
+### at depth
+
+apply a function at a set depth of a nested list
+
+`x %>% at_depth(0, fun)` is equivalent to `fun(x)`.
+
+`x %>% at_depth(1, fun)` is equivalent to `map(x, fun)`.
+
+`x %>% at_depth(2, fun)` is equivalent to `map(x, . %>% map(fun))`.
+
+```{r "purrr::at_depth"}
+l1 <- list(
+  obj1 = list(
+    prop1 = list(param1 = 1:2, param2 = 3:4),
+    prop2 = list(param1 = 5:6, param2 = 7:8)
+    ),
+  obj2 = list(
+    prop1 = list(param1 = 9:10, param2 = 11:12),
+    prop2 = list(param1 = 13:14, param2 = 15:16)
+    )
+  )
+
+# In the above list, "obj" is level 1, "prop" is level 2 and "param"
+# is level 3. To apply sum() on all params, we map it at depth 3:
+l1 %>% at_depth(3, sum)
+
+# map() lets us pluck the elements prop1/param2 in obj1 and obj2:
+l1 %>% map(c("prop1", "param2")) %>% str()
+
+# But what if we want to pluck all param2 elements? Then we need to
+# act at a lower level:
+l1 %>% at_depth(2, "param2") %>% str()
+```
+
+### contains
+
+predicate function for checking inclussion / containing of objects in another.
+
+works with lists and vectors. but there's some gotchas.
+
+```{r "purrr::contains"}
+x <- list(1:10, 5, 9.9)
+x %>% contains(1:10)
+x %>% contains(3)
+list(1, 2, 3) %>% contains(2)
+c(1, 2, 3) %>% contains(2)
+
+# gotchas!
+1:3 %>% as.list %>% contains(2)
+1:3 %>% contains(2)
+
+# instead use
+1:3 %>% as.list %>% contains(2L)
+1:3 %>% contains(2L)
+```
+
+### invoke
+
+Set of functions facilitating invokation / execution of combinations of functions and parameters
+
+```{r "purrr::invoke"}
+# Invoke a function with a list of arguments
+invoke(runif, list(n = 10))
+# Invoke a function with named arguments
+invoke(runif, n = 10)
+
+list("01a", "01b") %>%
+  invoke(paste, ., sep = ".")
+```
+
+invoke map
+
+```{r "purrr::invoke_map"}
+# Invoke a list of functions, each with different arguments
+invoke_map(list(runif, rnorm), list(list(n = 10), list(n = 5)))
+# Or with the same inputs:
+invoke_map(list(runif, rnorm), list(list(n = 5)))
+invoke_map(list(runif, rnorm), n = 5)
+# Or the same function with different inputs:
+invoke_map("runif", list(list(n = 5), list(n = 10)))
+
+# Or as a pipeline
+list(m1 = mean, m2 = median) %>% invoke_map(x = rcauchy(100))
+list(m1 = mean, m2 = median) %>% invoke_map_dbl(x = rcauchy(100))
+```
+
+### lift
+
+composition helper. helps with sending parameters to functions.
+
+- `d`: dots `...`
+- `l`: list
+- `v`: vector
+
+`lift_dl` means lift dots to list.
+
+```{r "purrr::lift functions"}
+### Lifting from ... to list(...) or c(...)
+x <- list(x = c(1:100, NA, 1000), na.rm = TRUE, trim = 0.9)
+lift_dl(mean)(x)
+lift(mean)(x) # lift is alias for lift_dl
+
+# Or in a pipe:
+mean %>% lift_dl %>% invoke(x)
+
+# Default arguments can also be specified directly in lift_dl()
+list(c(1:100, NA, 1000)) %>% lift_dl(mean, na.rm = TRUE)()
+
+# lift_dl() and lift_ld() are inverse of each other.
+# Here we transform sum() so that it takes a list
+fun <- sum %>% lift_dl()
+fun(list(3, NA, 4, na.rm = TRUE))
+# Now we transform it back to a variadic function
+fun2 <- fun %>% lift_ld()
+fun2(3, NA, 4, na.rm = TRUE)
+```
+
+### combinations
+
+read the `cross` help for more complex situations.
+
+```{r "purrr::cross"}
+dta <-
+  list(id = c("John", "Jane"),
+       greeting = c("Hello.", "Bonjour."),
+       sep = c("! ", "... ")
+       )
+
+combinations <- dta %>% cross()
+combinations %>% str
+combinations %>% map(lift(paste))
+```
+
+### detect
+
+`find`/`detect` in ruby. returns FIRST result based on some data and a predicate.
+
+works for vectors or lists.
+
+```{r "purrr::detect"}
+is_even <- function(x) x %% 2 == 0
+
+3:10 %>% detect(is_even)
+3:10 %>% detect_index(is_even)
+
+3:10 %>% detect(is_even, .right = TRUE)
+3:10 %>% detect_index(is_even, .right = TRUE)
+
+l1 <-
+  list( l11 = list(a = 1, b = 2, mes = "1st item")
+       ,l12 = list(a = 3, b = 4, mes = "2nd item"))
+l1 %>% detect(~ .$b == 4)
+```
+
+### every / some
+
+`all`/`any` in Ruby. predicate functions.
+
+```{r "purrr::every"}
+x <- list(0, 1, TRUE)
+x %>% every(identity)
+x %>% some(identity) # returns TRUE on the last predicate check
+
+y <- list(0:10, 5.5)
+y %>% every(is.numeric)
+y %>% every(is.integer)
+```
+
+### flatten
+
+similar to `unlist` but only flattens one layer at a time.
+
+```{r "purrr::flatten"}
+(x <- list( rerun(2, sample(4))
+           ,rerun(2, sample(4))))
+x %>% flatten()
+rerun(2, sample(4)) %>% flatten_int()
+```
+
+### negate
+
+negate a predicate function
+
+```{r "purrr::negate"}
+set.seed(12)
+x <- transpose(list(x = 1:10, y = rbernoulli(10)))
+x %>% keep("y") %>% length() # keep the list entries with y being TRUE
+x %>% keep(negate("y")) %>% length() # same as above but y being FALSE
+```
+
+### null-default
+
+inspired from ruby's `||`
+
+```{r "purrr::null-default"}
+1 %||% 2
+NULL %||% 2
+NA %||% 2
+integer() %||% 2
+```
+
+## tidyr {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Usage basics for this data-munging library
+
+### gather
+
+unpivot a data frame. i.e. turn columns into rows. Will use the WHOLE data-frame, so remove columns you don't want in the final result.
+
+```{r tidyr::gather}
+library(magrittr)
+stocks <- data.frame(
+  time = as.Date('2009-01-01') + 0:7,
+  dayNum = 1:8,
+  X = rnorm(8, 0, 1),
+  Y = rnorm(8, 0, 2),
+  Z = rnorm(8, 0, 4)
+)
+stocks %>% str
+
+stocks %>%
+  tidyr::gather( stock # name of the unpivoted data label
+                ,price # name of the unpivoted data value
+                ,-c(time, dayNum)) # REMOVE the columns you still want aggregates for
+```
+
+### spread
+
+pivot a data frame. i.e. turn a factor column with numeric column and return numeric columns for each factor
+
+```{r tidyr::spread}
+library(magrittr)
+stocks <- data.frame(
+   time = as.Date('2009-01-01') + 0:7
+  ,dayNum = 1:8
+  ,stock = c("X", "Y", "Z")
+  ,price = rnorm(3*8)
+)
+stocks %>% str
+
+stocks %>%
+  tidyr::spread( stock  # name of the factor column to pivot
+                ,price) # name of the numeric column to pivot
+```
+
+## XLConnect {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Section for XLConnect basic workflows.
+
+### installation
+
+```{r "install XLconnect", eval = FALSE}
+devtools::install_github('cran/xlconnectjars')
+devtools::install_github('cran/xlconnect')
+```
+
+### writing excel sheets
+
+```{r "writing xl sheets"}
+library(magrittr)
+library(XLConnect)
+irisTbl <-
+  iris %>% with({table(Petal.Width, Species)}) %>% as.data.frame
+wbPath <- "/tmp/ss.xlsx"
+wb <- loadWorkbook(wbPath, create = TRUE)
+wb %>% createSheet(name = "irisTable")
+wb %>% appendWorksheet(irisTbl, sheet = "irisTable")
+wb %>% saveWorkbook
+file.remove(wbPath)
+```
+
+## magrittr {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+magrittr stuff. TODO: Add Anki stuff
+
+```{r echo = FALSE}
+library(magrittr)
+```
+
+### pipe anonymous function
+
+wrap the function in paratheses.
+
+```{r}
+f1 <- gl(2,4) %>% sample
+f2 <- gl(2,4) %>% sample
+table(f1, f2) %>%
+  (function(table){ divide_by(table %>% diag %>% sum,
+                              table %>% sum) })
+# or use special magrittr syntax-sugar
+table(f1, f2) %>%
+  { divide_by(diag(.) %>% sum,
+              sum(.)) }
+```
+
+### full package function lookup
+
+to use full package path to function, use paratheses to avoid an exeception
+
+```{r "magrittr package function lookup qwirk"}
+c(1, NULL, 3, NA, 5) %>% (purrr::compact)
+
+# there's no problems if you're using paratheses after the function though, so if there's extra params, piping works as usual
+c(1, NULL, 3, NA, 5) %>% purrr::compact(.)
+
+# or with extra parameters
+zeroPaster <- function(e1, e2) paste0(e2, e1)
+list(1:3, letters[1:3]) %>% purrr::pmap(.f = zeroPaster)
+# list(1:3, letters[1:3]) %>% purrr::pmap(.l = ., .f = function(e1, e2) paste0(e2, e1)) # also works
+1:3 %>% purrr::map2(letters[1:3], zeroPaster)
+```
+
+## regexes {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+- see `?regex` for more details on Regular Expressions
+- can be used for many things. e.g. `strsplit`
+- also see `grep` section
+
+### splitting a string
+
+split a string into a atomic vector
+
+```{r}
+library(magrittr)
+"name bad  good \t heaven" %>% strsplit("[[:space:]]+") %>% unlist
+```
+
+### extracting based on pattern
+
+example for extracting numbers from strings
+
+- double escape regex-backslashes
+- use `.*` to match before and after the `()`-group
+
+```{r}
+files <-
+  c("data/attendance/workshop-2016-13-Attendance.tsv"
+   ,"data/attendance/workshop-2016-19-Attendance.tsv"
+   ,"data/attendance/workshop-2016-18-Attendance.tsv"
+   ,"data/attendance/workshop-2015-34-Attendance.tsv"
+   ,"data/attendance/workshop-2016-15-Attendance.tsv"
+   ,"data/attendance/workshop-2016-04-Attendance.tsv"
+   ,"data/attendance/workshop-2016-01-Attendance.tsv"
+)
+rs <- ".*(\\d{4}[-]\\d+).*"
+files %>% sub(rs, "\\1", .)
+```
+
+regex in `dir` to list specific files from file system in a directory. similar to `ls` in Unix.
+
+```{r}
+# # say that `dir` returns the files below.
+# files <-
+#   c( "total-2016-25-attendance.tsv", "total-2016-26-attendance.tsv"
+#     ,"total-2016-27-attendance.tsv", "total-2016-28-attendance.tsv"
+#     ,"total-2016-29-attendance.tsv", "total-2016-30-attendance.tsv"
+#     ,"total-2016-31-attendance.tsv", "total-2016-32-attendance.tsv"
+#     ,"total-2016-33-attendance.tsv", "total-2016-34-attendance.tsv"
+#     ,"total-2016-35-attendance.tsv", "total-2016-36-attendance.tsv"
+#     ,"total-2016-37-attendance.tsv", "total-holiday-attendance.tsv"
+#   )
+# # use the `pattern` flag like below to only extract \d{4}-\d{2} file names.
+# dir(attendanceDir(center)
+#     ,pattern = paste(classType, "[-](\\d{4}[-]\\d{2}).*", sep = ""))
+#
+```
+
+```{r}
+timeslots <-
+  c("13:05", "14:40", "18:40", "19:40", "12:40", "13:40",
+    "18:40", "19:40", "12:40", "14:40", "18:05", "18:40",
+    "19:40", "11:40", "12:40", "14:40", "12:40", "13:40",
+    "14:40", "16:40", "12:40", "13:40", "18:40", "20:40")
+```
+
+Extracting hours
+
+```{r}
+timeslots %>%
+  gsub("(\\d{2}).*", "\\1", .)
+```
+
+Extracting minutes
+
+```{r}
+timeslots %>%
+  gsub(".*(\\d{2})", "\\1", .)
+```
+
+### mulitple patterns
+
+single character
+
+```{r}
+FirstName <- c("Ben","Brck","Adam","Molly","Eve")
+FirstName %>% grepl(pattern = "[AaEeIi]")
+```
+
+multiple character
+
+```{r}
+MobileTel <- c("170766666", "18132452345", "138789", "153213", "111342000"
+               ,"1772341", "18452342", "19123123", "17089991", "12188123")
+
+MobileTel %>%
+  grepl(pattern = "1340|1341|1342|1346|136|150|152|183|184|187|188")
+```
+
+### pattern begins with
+
+match on the beginning of the string
+
+```{r}
+MobileTel <- c("170766666", "18132452345", "138789", "153213", "111342000"
+               ,"1772341", "18452342", "19123123", "17089991", "12188123")
+
+MobileTel %>%
+  grepl(pattern = "^1340|^1341|^1342|^1346|^136|^150|^152|^183|^184|^187|^188")
+```
+
+## Helpers {.tabset .tabset-fade .tabset-pills}
+
+### Overview
 
 Section for good helper functions.
 
-#### wordArray
+### exclude
+
+delete / remove / exclude / reject elements from a vector
+
+```{r "vector remove element(s)"}
+exclude.default <- function(vctr, elements) vctr[! vctr %in% elements]
+a <- c("master", "of", "puppets")
+a %>% exclude(c("of", "master"))
+```
+
+### Curry
+
+perform currying in R with the `functional` package. Or just use
+
+```{r}
+Curry <- function(FUN, ...){
+  .orig <- list(...)
+  function(...) do.call(FUN, c(.orig, list(...)))
+}
+```
+
+### isEmpty
+
+checks if list / atomic vector (array) is empty
+
+```{r}
+library(magrittr)
+isEmpty <- function(obj) UseMethod("isEmpty")
+isEmpty.default <- function(obj) obj %>% length %>% equals(0)
+isEmpty.data.frame <- function(dtf) dtf %>% nrow %>% equals(0)
+isEmpty.tbl <- function(obj) obj %>% as.data.frame %>% isEmpty
+
+integer(0) %>% isEmpty
+1:3 %>% isEmpty
+list() %>% isEmpty
+1:3 %>% as.list %>% isEmpty
+data.frame(price = integer(0)) %>% isEmpty
+data.frame(price = 1:3) %>% isEmpty
+```
+
+### isNonEmpty
+
+checks if list / atomic vector (array) is non-empty
+
+```{r}
+library(magrittr)
+isNonEmpty <- function(obj) UseMethod("isNonEmpty")
+isNonEmpty.default <- function(obj) obj %>% length %>% is_greater_than(0)
+isNonEmpty.data.frame <- function(obj) obj %>% nrow %>% is_greater_than(0)
+isNonEmpty.tbl <- function(obj) obj %>% as.data.frame %>% isNonEmpty
+
+integer(0) %>% isNonEmpty
+1:3 %>% isNonEmpty
+list() %>% isNonEmpty
+1:3 %>% as.list %>% isNonEmpty
+data.frame(price = integer(0)) %>% isNonEmpty
+data.frame(price = 1:3) %>% isNonEmpty
+```
+
+### asQuoted
+
+put single quotes around the argument. This is useful mainly for the underscore variants of `dplyr` functions.
+
+```{r "asQuoted"}
+asQuoted <- function(arg) paste0("'", arg, "'")
+set.seed(12)
+threshold <- .7
+data.frame(a = runif(10)) %>% filter_(paste("a > ", threshold %>% asQuoted))
+```
+
+### compact
+
+similar to ruby's `compact`.
+
+```{r}
+library(magrittr)
+compact <- function(object) { UseMethod("compact") }
+compact.list <- function(lst){
+  lst[lapply(lst,
+             function(elm){
+               if(elm %>% is.atomic){
+                 elm %>% length
+               }else{
+                 elm %>% nrow
+               }
+             }) > 0]
+}
+
+( list(a = 1,
+       b = 2,
+       c = integer(0),
+       d = character(0),
+       e = 3,
+       f = data.frame(ii = integer(0), cc = character(0)))
+  %>% compact
+  )
+```
+
+### prepend
+
+add `prepend` (for nice naming) since `append` exists
+
+```{r}
+prepend <- function(x, values) { append(values, x) }
+append(1:2, 6:8)
+prepend(1:2, 6:8)
+```
+
+### wordArray
 
 inspired by ruby's `%w`
 
@@ -54,7 +2049,7 @@ wordArray <- function(string){ string %>% strsplit("[[:space:]]+") %>% unlist }
 "carat color value" %>% wordArray
 ```
 
-#### dataDivision
+### dataDivision
 
 Divide by zero with set default
 
@@ -68,30 +2063,7 @@ dataDivision(10,2)
 dataDivision(10,0)
 ```
 
-#### getFactors
-
-extract factor columns from data frame.
-
-```{r}
-library(magrittr)
-getFactors <- function(dataFrame){
-  dataFrame %>%
-    names %>%
-    sapply(function(colName){
-             dataFrame %>%
-               getElement(colName) %>%
-               is.factor
-    }) %>%
-    dataFrame[,.]
-}
-exams <-
-  expand.grid(res = c("Y", "N"),
-              score = 1:4,
-              id = LETTERS[1:5])
-exams %>% head %T>% print %>% getFactors
-```
-
-#### Diagonal proportion of a matrix
+### Diagonal proportion of a matrix
 
 returns if object is square shaped i.e. number of rows and columns are the equal
 
@@ -102,6 +2074,7 @@ isSquareShaped <- function(object) { equals(ncol(object), nrow(object)) }
 calculates the diagonal proportion in a square-shaped object
 
 ```{r}
+library(magrittr)
 diagonalProportion <-
   function(object){
     if(object %>% isSquareShaped %>% not){
@@ -113,13 +2086,186 @@ diagonalProportion <-
 (diag(3) + 0.5) %T>% print %>% diagonalProportion
 ```
 
-### 雑多 {.tabset .tabset-fade .tabset-pills}
+### Interval
 
-#### Overview
+function for creating an interval sequence (integers)
+
+```{r}
+library(magrittr)
+interval <- function(mid, radius) { mid %>% { seq(. - radius, . + radius) } }
+```
+
+### mkdir -p
+
+function for creating deep folder seemlessly
+
+```{r}
+library(magrittr)
+mkdirp <- function(filepath) { filepath %>% dir.create(recursive = TRUE, showWarnings = FALSE) }
+```
+
+### rest
+
+function similar to `rest`/`next`/`pop` in closure. I.e. returns object without the first element.
+works with e.g. atomic vectors and lists. (will not work with a `data.frame`)
+
+```{r}
+library(magrittr)
+rest <- function(stk){
+  if(stk %>% length %>% is_greater_than(1) ){
+    stk[2:length(stk)]
+  }else{
+    NULL
+  }
+}
+
+1:4 %>% rest
+1:4 %>% as.list %>% rest
+```
+
+### truncateLast
+
+similar to the above `rest` function but for the last object in a stack
+works with e.g. atomic vectors and lists. (will not work with a `data.frame`)
+
+```{r}
+library(magrittr)
+truncateLast <- function(stk){
+  if(stk %>% length %>% is_greater_than(1) ){
+    stk[1:(length(stk) - 1)]
+  }else{
+    NULL
+  }
+}
+
+4:1 %>% truncateLast
+4:1 %>% as.list %>% truncateLast
+```
+
+### coalesce function
+
+Using `Reduce`, I don't know *why* this works >.<
+
+```{r}
+a <- c(1,  2,  NA, 4, NA)
+b <- c(NA, NA, NA, 5, 6)
+c <- c(7,  8,  NA, 9, 10)
+
+coalesce <- function(...) {
+  list(...) %>%
+    Reduce(f = function(nxt, acc) {
+      i <- which(is.na(nxt))
+      nxt[i] <- acc[i]
+      nxt})
+}
+coalesce(a, b, c)
+```
+
+based on [stack overflow](http://stackoverflow.com/questions/19253820/how-to-implement-coalesce-efficiently-in-r) the manual index version below is faster.
+
+```{r}
+coalesce <- function(...) {
+  output <- ..1
+  for (element in list(...)[-1]) {
+    naIndexes <- which(is.na(output))
+    output[naIndexes] <- element[naIndexes]
+  }
+  output
+}
+coalesce(a, b, c)
+```
+
+### multiple plots
+
+using `ggplot` get multiple plots in the same window
+
+```{r "multiplot function"}
+# TODO: add to package, would be nice, actually maybe make a helper package w documentation etc.
+#
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+```
+
+`multiplot` demo
+
+```{r}
+library(ggplot2)
+
+p1 <- ggplot(ChickWeight, aes(x=Time, y=weight, colour=Diet, group=Chick)) +
+	geom_line() +
+	ggtitle("Growth curve for individual chicks")
+
+p2 <- ggplot(ChickWeight, aes(x=Time, y=weight, colour=Diet)) +
+	geom_point(alpha=.3) +
+	geom_smooth(alpha=.2, size=1) +
+	ggtitle("Fitted growth curve per diet")
+
+p3 <- ggplot(subset(ChickWeight, Time==21), aes(x=weight, colour=Diet)) +
+	geom_density() +
+	ggtitle("Final weight, by diet")
+
+p4 <- ggplot(subset(ChickWeight, Time==21), aes(x=weight, fill=Diet)) +
+	geom_histogram(colour="black", binwidth=50) +
+	facet_grid(Diet ~ .) +
+	ggtitle("Final weight, by diet") +
+	theme(legend.position="none") # No legend (redundant in this graph)
+
+multiplot(p1, p2, p3, p4, cols = 2)
+```
+
+taken from [R cookbook](http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/)
+
+
+## Cheats {.tabset .tabset-fade .tabset-pills}
+
+### Overview
 
 Section for "tricks".
 
-#### saving files
+### saving files
 
 `save` saves the R-object(s) to disc and keeps the naming
 
@@ -160,7 +2306,7 @@ Section for "tricks".
 # dump; source
 ```
 
-#### remove names
+### remove names
 
 ```{r}
 require(magrittr)
@@ -182,18 +2328,8 @@ rownames(crossMatrix) <- NULL
 crossMatrix
 ```
 
-#### Citation
+### remove named columns
 
-```{r message=FALSE}
-require(magrittr)
-```
-
-```{r}
-citation() %>% toBibtex # defaults to R-documentation
-citation("magrittr") %>% toBibtex
-```
-
-#### remove named columns
 ```{r message=FALSE}
 require(magrittr)
 ```
@@ -205,105 +2341,70 @@ df %>% subset(select=-c(z,u))
 df[ , -which(names(df) %in% c("z","u"))] # also works but not as nice IMO
 ```
 
-#### generate factor levels
+### insertion in characters
 
-```{r}
-gl(2, 3, labels = c("Control", "Treatment"))
+or strings. how to find something similar to the use case of Ruby's `insert`
+
+```{r "character insertion"}
+"shjat" %>% gsub('^([a-z]{2})([a-z]+)$',"\\1_\\2",.)
+
+insert <- function(obj, ...) UseMethod("insert")
+insert.character <- function(chr, position, insertion){ # only works with \w characters
+  chr %>%
+    gsub( paste0("^(\\w{", position - 1, "})(\\w+)$")
+         ,paste0("\\1", insertion, "\\2")
+         ,.)
+}
+"shjat" %>% insert(3, "_")
 ```
 
-#### drop factor levels
-
-Use the `droplevels` function. Returns the full argument object with pruned factor levels.
+### time-series convertions
 
 ```{r}
-df <-
-  data.frame(letters=letters[1:5],
-             numbers=seq(1:5))
-levels(df$letters)
-subdf <- df %>% subset(numbers <= 3)
-levels(subdf$letters)
-subdf$letters <- droplevels(subdf$letters)
-levels(subdf$letters)
+library(xts)
+price <- structure(list(
+  date = c(20070103L, 20070104L, 20070105L, 20070108L, 20070109L,
+           20070110L, 20070111L, 20070112L, 20070115L),
+  close = c(54.7, 54.77, 55.12, 54.87, 54.86, 54.27, 54.77, 55.36, 55.76)),
+  .Names = c("date", "close"), class = "data.frame",
+  row.names = c("1", "2", "3", "4", "5", "6", "7", "8", "9"))
+price$date %<>% as.character %>% as.Date(format="%Y%m%d")
+xts(price$close, price$date)
 ```
-
-#### pipe anonymous function
-
-wrap the function in paratheses.
 
 ```{r}
-f1 <- gl(2,4) %>% sample
-f2 <- gl(2,4) %>% sample
-table(f1, f2) %>%
-  (function(table){ divide_by(table %>% diag %>% sum,
-                              table %>% sum) })
-# or use special magrittr syntax-sugar
-table(f1, f2) %>%
-  { divide_by(diag(.) %>% sum,
-              sum(.)) }
+library(zoo)
+pricez <- read.zoo(text="   DATE  CLOSE
+ 1    20070103 54.700
+ 2    20070104 54.770
+ 3    20070105 55.120
+ 4    20070108 54.870
+ 5    20070109 54.860
+ 6    20070110 54.270
+ 7    20070111 54.770
+ 8    20070112 55.360
+ 9    20070115 55.760
+ ")
+index(pricez) <- as.Date(as.character(index(pricez)), format="%Y%m%d")
+pricez
 ```
 
-#### print declared variable
-
-use parentheses to return / print result during variable declaration
+`ts` (time-series) object to `data.frame`
 
 ```{r}
-(a <- 1)
-a
+library(zoo)
+UKgas %>%
+  { data.frame(date = as.Date(as.yearqtr(time(.))),
+               gas = as.matrix(.)) }
 ```
 
-#### dicotomize
+### Tables
 
-discretize continuous variable. (turn continuous variable discrete)
-
-```{r}
-Z <- stats::rnorm(10000)
-table(cut(Z, breaks = -6:6))
-
-breaks <- c(-3, 1, 5) # one more break than labels
-labels <- c("low", "high")
-U <- runif(10, min=-3, max=5)
-cut(U,
-    breaks = breaks,
-    labels = labels,
-    ordered_result = TRUE, # for ordered factors (not always well supported)
-    include.lowest = TRUE)
+```{r, eval=FALSE, echo=FALSE}
+devtools::install_github('cran/gtools')
+devtools::install_github('cran/gdata')
+devtools::install_github('cran/gmodels')
 ```
-
-#### regexes
-
-- see `?regex` for more details on Regular Expressions
-- can be used for many things. e.g. `strsplit`
-
-```{r}
-"name bad  good \t heaven" %>% strsplit("[[:space:]]+") %>% unlist
-```
-
-#### edit factors
-
-alter factor-levels
-
-- use a look-up table
-- NOTE: use `as.character` to avoid serious bugs
-
-```{r}
-(fvar <-
-  gl(n = 3, # number of levels
-     k = 2, # number of replications
-     labels = c("Control", "Treatment1", "Treatment2")))
-factorLookUp <-
-  c(
-     "Treatment1" = "trmt"
-    ,"Treatment2" = "trmt"
-    ,"Control"    = "ctrl"
-    )
-
-# BUG!! use `as.character`
-# fvar %>% factorLookUp[.] %>% as.factor
-
-fvar %>% as.character %>% factorLookUp[.] %>% as.factor
-```
-
-#### Tables
 
 ```{r}
 require(gmodels)
@@ -321,58 +2422,24 @@ CrossTable(infert$education, infert$induced, expected = TRUE, format="SAS")
 CrossTable(infert$education, infert$induced, expected = TRUE, format="SPSS")
 ```
 
-#### padding
-
-padding with zeros
-
-```{r}
-sprintf("%04d", 20)
-```
-
-#### transforming factors
-
-```{r}
-require(magrittr)
-levels <- 1:4
-factorVariable <- factor(levels,
-                         labels=levels+10)
-factorVariable %>% as.integer # returns underlying levels
-factorVariable %>% as.character # returns labels
-```
-
-#### dplyr
-
-- different ways of using `dplyr::select`
-- use array with `one_of` to select columns from data frame
-
-```{r}
-require(magrittr); require(dplyr)
-airquality %>% head %>% select(Temp, Wind)
-airquality %>% head %>% select_("Temp", "Wind")
-
-columns <- "Temp Wind" %>% wordArray
-airquality %>% head %>% select(one_of(columns))
-# airquality %>% head %>% select_(one_of(columns)) # ERRORS: can not find function `one_of`
-```
-
-#### cumulatively sum within a group
+### cumulatively sum within a group
 
 Cumulativily sum the `carb` column within each `am`-group
 
 ```{r}
 require(magrittr)
 require(dplyr)
-mtcars %>%
-  filter(cyl == "6") %>%
-  select(carb, gear, am) %>%
-  group_by(am) %>%
-  arrange(am)
-
-.Last.value %>%
-  do(cumsum(.["carb"]))
+( mtcars
+  %>% filter(cyl == "6")
+  %>% select(carb, gear, am)
+  %>% group_by(am)
+  %>% arrange(am)
+  %T>% print
+  %>% do(cumsum(.["carb"]))
+  )
 ```
 
-#### list to data.frame
+### list to data.frame
 
 given a list of data frames. use `Reduce` to bind them togetherq
 
@@ -384,34 +2451,542 @@ c(3, 6, 12) %>%
   Reduce(rbind, .)
 ```
 
-### Plots {.tabset .tabset-fade .tabset-pills}
+## Dates {.tabset .tabset-fade .tabset-pills}
 
-#### Overview
+### Overview
 
-- `ggplot2` will have precedence to base `graphics::plot`
+section for working with dates
 
-#### Typical
+### parsing
+
+parsing dates. `strftime` is a wrapper for `format.POSIXct` and `strptime` for `POSIXct`
+
+```{r date_parsing}
+strptime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") # creates a `POSIXlt POSIXt`
+strftime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") # creates a `character`
+strptime("01:30:00", "%H:%M:%S")
+strptime("20160927", "%Y%m%d")
+strptime(20160927, "%Y%m%d")
+as.POSIXct("2011-03-27 01:30:00")
+as.POSIXct("2011-03-27 01:30:00") %>% class
+as.POSIXct("2011-03-27 01:30:00") %>% class
+as.POSIXlt("2011-03-27 01:30:00") %>% unclass %>% unlist
+```
+
+### extracting data
+
+```{r "date data extracting"}
+strptime("20160927", "%Y%m%d") %>% weekdays
+as.POSIXct("2011-03-27 01:30:00") %>% months
+strptime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") %>% format("%H")
+```
+
+### combining date & time
 
 ```{r}
+require(magrittr)
+d1 <- as.Date("1970-10-12")
+t1 <- "10:40"
+paste(d1, t1) %>% as.POSIXct
+```
+
+### weeks
+
+```{r}
+today <- Sys.Date()
+format(today, format = "%Y-%W")
+```
+
+## Factors {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+section for working with factors
+
+### generate factor levels
+
+```{r}
+gl(2, 3, labels = c("Control", "Treatment"))
+```
+
+### drop factor levels
+
+Use the `droplevels` function. Returns the full argument object with pruned factor levels.
+
+```{r}
+df <-
+  data.frame(letters=letters[1:5],
+             numbers=seq(1:5))
+levels(df$letters)
+subdf <- df %>% subset(numbers <= 3)
+levels(subdf$letters)
+subdf$letters <- droplevels(subdf$letters)
+levels(subdf$letters)
+```
+
+### Replace NA with value in factor
+
+Replace NA with value in a factor variables.
+
+```{r}
+replaceFactorNAs <- function(fctr, naLevel = "Unknown"){
+  ifelse(fctr %>% is.na, naLevel, fctr %>% as.character) %>%
+    factor(fctr %>% levels %>% append(naLevel))
+}
+```
+
+### getFactors
+
+extract factor columns from data frame.
+
+```{r}
+library(magrittr)
+getFactors <- function(dataFrame){
+  dataFrame %>%
+    names %>%
+    sapply(function(colName){
+             dataFrame %>%
+               getElement(colName) %>%
+               is.factor
+    }) %>%
+    dataFrame[,.]
+}
+exams <-
+  expand.grid(res = c("Y", "N"),
+              score = 1:4,
+              id = LETTERS[1:5])
+exams %>% head %T>% print %>% getFactors
+```
+
+### ordered factors
+
+with ordered / ordinal factors you can filter using less / greater / larger / smaller than.
+
+```{r "ordered factors"}
+mp <- structure(list(pa = c("M 1", "M 2", "M 3")
+                     ,fy = c("FY17.05", "FY17.04", "FY17.03"))
+                , .Names = c("pa", "fy")
+                , row.names = c(NA, -3L)
+                , class = "data.frame")
+mp %<>%
+  dplyr::mutate( pa = pa %>% ordered
+                ,fy = fy %>% as.ordered)
+mp %>% str
+mp %>% dplyr::filter(pa > "M 1")
+```
+
+### transforming factors
+
+```{r}
+require(magrittr)
+levels <- 1:4
+factorVariable <- factor(levels,
+                         labels=levels+10)
+factorVariable %>% as.integer # returns underlying levels
+factorVariable %>% as.character # returns labels
+```
+
+### edit factors
+
+alter / remap factor-levels
+
+- use a look-up table
+- `remapFactor` function is MUCH faster for large factors
+- NOTE: the mapping is reversed in the two approaches
+- NOTE: use `as.character` in remapFactor2 to avoid serious bugs
+
+```{r}
+(fvar <-
+  gl(n = 3, # number of levels
+     k = 2, # number of replications
+     labels = c("Control", "Treatment1", "Treatment2")))
+
+# remapFactor code taken from
+# https://cran.r-project.org/web/packages/gdata/vignettes/mapLevels.pdf
+remapFactor <- function(fctr, fctrMap){ levels(fctr) <- fctrMap ; fctr }
+remapFactor2 <- function(fctr, fctrMap){ fctr %>% as.character %>% fctrMap[.] %>% unname %>% as.factor }
+
+factorLookUpMap <-
+  list(
+        "trmt" = "Treatment1"
+       ,"trmt" = "Treatment2"
+       ,"ctrl" = "Control"
+       )
+fvar %>% remapFactor(factorLookUpMap)
+
+factorLookUpMap2 <-
+  c(
+     "Treatment1" = "trmt"
+    ,"Treatment2" = "trmt"
+    ,"Control"    = "ctrl"
+    )
+fvar %>% remapFactor2(factorLookUpMap2)
+
+```
+
+or use `factor` to reorder factor levels
+
+```{r}
+set.seed(12)
+ist <- InsectSprays$spray %>% sample %>% head(10) %>% as.character
+ist %>% factor(levels = c("F", "D", "E", "A", "B"))
+.Last.value %>% table
+```
+
+or when it's more complicated
+
+```{r}
+c(1, 0, 0, NA, 1) %>%
+  factor(labels = c("N", "Y")) %>%
+  factor(c("N", "Y", "U"))
+```
+
+
+## Lists {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+section for working with lists
+
+### Subsetting
+
+Subset / Select specific elements in a list.
+
+Use single square brackets and use numerical index >.<
+
+TODO: Add Helper for this??
+
+```{r "list select"}
+Harman23.cor[c(2,3)] %>% str
+```
+
+using names to exclude / include list elements
+
+```{r "named list subsetting"}
+include.list <- function(vctr, elements) vctr[vctr %>% names %in% elements]
+exclude.list <- function(vctr, elements) vctr[! vctr %>% names %in% elements]
+l1 <-
+  list(
+     qsec = 2
+    ,mpg = 3
+    ,disp = 4
+    ,vs = 5
+    ,wt = 6
+    ,am = 7
+   )
+
+l1 %>% include(c("qsec", "vs", "am")) %>% str
+l1 %>% exclude(c("qsec", "vs", "am")) %>% str
+```
+
+### combining
+
+adding / appending / pushing / concatenating lists can be done with `append`
+
+```{r "combing lists"}
+la <- list(a = 1:2, rr = runif(4))
+lb <- list(b = 3)
+append(la, lb)
+
+# same with tibble
+
+library(tibble)
+la <- lst(a = 1:2, rr = runif(4))
+lb <- lst(b = 3)
+append(la, lb)
+```
+
+lists with overlapping object names will still merge (not overwrite) but extraction gets iffy
+
+```{r "combining list gotcha"}
+la <- list(a = 1:2, rr = runif(4))
+lr <- list(rr = 3)
+(ll <- append(la, lr))
+ll[["rr"]] # grabs the first object with corresponding name. use index to access the later "rr"
+
+# tibble is consistent with list
+library(tibble)
+la <- lst(a = 1:2, rr = runif(4))
+lr <- lst(rr = 3)
+(ll <- append(la, lr))
+ll[["rr"]]
+```
+
+### multi-layer lists
+
+build larger lists and iterate with them
+
+```{r "multi-layer lists"}
+library(magrittr)
+dates <-
+  list( day1 = "2015-12-12"
+       ,day2 = "2016-07-12"
+       ,day3 = "2014-01-03") %>%
+    sapply(as.Date, simplify = FALSE)
+wkdays <- dates %>% sapply(weekdays, simplify = FALSE)
+mnths <- dates %>% sapply(months, simplify = FALSE)
+
+## How do we combine these in one named list?
+
+mapply(FUN = function(dta, name){
+         list( dta = dta
+              ,weekday = wkdays[[name]]
+              ,month = mnths[[name]]
+              )
+       }
+  ,dates
+  ,names(dates)
+  ,SIMPLIFY = FALSE
+  )
+
+## or even better
+
+dd <- dates %>% sapply(function(dta){list(date = dta)}, simplify = FALSE)
+dd %>%
+  sapply(function(lst){
+           append(lst, list(weekday = lst$date %>% weekdays))
+          }, simplify = FALSE)
+
+## or more succinct if it makes sense
+dates %>%
+  sapply(function(dta){
+           list( date = dta
+                ,weekday = dta %>% weekdays)
+          }, simplify = FALSE)
+```
+
+use tibble and purrr
+
+```{r "multi-layers with purrr and tibble"}
+library(tibble)
+library(purrr)
+dates %>%
+  as.tibble %>%
+  map(function(date){
+        lst( date = date
+            ,weekday = date %>% weekdays)
+       }) # %>% as.tibble
+
+# multiple arguments to map does NOT work as expected
+
+dates %>%
+  as.tibble %>%
+  map(dates %>% names
+      ,.f = function(date, dayLabel){
+        lst( date = date
+            ,month = date %>% months
+            ,label = dayLabel)
+      })
+
+# mix nested lists and vectors
+
+datesList <-
+  dates %>%
+    map(function(date){
+      lst( date = date
+          ,meta = lst( weekday = date %>% weekdays)
+         )
+     })
+
+datesList %>% map(function(ddt){
+    ddt$meta %<>% append(list(month = ddt$date %>% months))
+    ddt
+   })
+```
+
+### iteration and names
+
+preserving names in the returning list
+
+```{r "lists and preserving names"}
+library(magrittr)
+dayList <- list(Day1 = 12, Day2 = 34, `Day 3` = 23)
+sapply(dayList, sqrt, simplify = FALSE)
+```
+
+accessing list item name inside function
+
+```{r "list item access from inside function"}
+dayPrinter <- function(dta, listName) paste0(listName, ": ", dta)
+Map(dayPrinter
+    ,dayList
+    ,names(dayList))
+
+# or with `mapply`, since `Map` is directly using `mapply`
+
+mapply(FUN = dayPrinter, dayList, names(dayList), SIMPLIFY = FALSE)
+
+# use a function to remove the boiler plate
+
+mapplyWithNames <- function(lst, FUN) mapply(FUN = FUN, lst, names(lst), SIMPLIFY = FALSE)
+dayList %>% mapplyWithNames(dayPrinter)
+```
+
+## Comparing objects {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+section for comparing objects
+
+### comparing scalars
+
+```{r "comparing scalars"}
+1 == 1L           # not strict
+identical(1, 1L)  # strict
+
+x1 <- 0.5 - 0.3
+x2 <- 0.3 - 0.1
+x1 == x2          # FALSE on most machines
+all.equal(x1, x2) # TRUE everywhere
+```
+
+### comparing vectors
+
+```{r "comparing vectors"}
+v1 <- 1:3               # integer
+v2 <- c(2-1, 3-1, 4-1)  # double
+v1 == v2
+all.equal(v1, v2)
+identical(v1, v2)
+
+# order significant, naturally
+v1s <- c(2,3,1)
+v1 == v1s
+all.equal(v1, v1s)
+
+# also for named vectors
+v3n <- c(`a` = 1, b = 2)
+v3ns <- c(b = 2, `a` = 1)
+v3n == v3ns
+all.equal(v3n, v3ns)
+```
+
+### comparing lists
+
+```{r "comparing lists"}
+l1 <- list(aa = 1, bb = 2)
+l2 <- list(bb = 2, aa = 1)
+# l1 == l2 # not implemented
+all.equal(l1, l2, check.attributes = FALSE)
+
+# order insignificant list comparison
+isEquivalentList <- function(list1, list2){
+  if(length(list1) != length(list2)) return(FALSE)
+  setdiff(list1, list2) %>% isEmpty
+}
+l3 <- list(bb = 2, aa = 1, cc = 3)
+l4 <- list(bb = 2, aa = 31)
+l5 <- list(2, 1)
+isEquivalentList(l1, l2)
+isEquivalentList(l2, l1)
+isEquivalentList(l3, l1)
+isEquivalentList(l1, l3)
+
+# checks values
+isEquivalentList(l1, l4)
+
+# does not check names
+isEquivalentList(l1, l5)
+
+# works on vectors too
+isEquivalentList(v1, v2)
+```
+
+## Plots {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+- `ggplot2` will have precedence to base standard library `graphics::plot`
+
+### helpers
+
+`cut_width` is a helper function for easier cutting of numerical values.
+
+```{r ggplot_cut_width}
+library(magrittr)
+set.seed(12)
+(rr <- runif(10, max = 9) %>% round)
+rr %>% ggplot2::cut_width(3)
+```
+
+### ggplot in functions
+
+with `ggplot` in a function, if you're passing arguments for `aes` use `aes_string`.
+
+```{r}
+library(ggplot2)
+cars <- within(mtcars, { cyl <- as.factor(cyl) })
+renderBoxplot <- function(yvar){
+  ggplot(cars, aes_string(x = "cyl", y = yvar)) + geom_boxplot()
+}
+renderBoxplot("mpg")
+renderBoxplot("hp")
+```
+
+### Typical
+
+```{r}
+library(ggplot2)
 (ggplot(airquality,
         aes(x = paste(Month, Day, sep="-"), y = Wind))
   + geom_point(size = .7)
   + geom_line(size = .5, colour = "blue")
   + ylab("Wind (mph)")
   + xlab("Days")
+  + ylim(0, 25)   # sets limit on y-axis
   + ggtitle("Wind over time")
   + geom_hline(aes(yintercept = median(Wind)), colour = "red")
   + scale_x_discrete(breaks=NULL)
 )
 ```
 
-#### Histogram
+### line plot
+
+line plots for e.g. a grouped (group by) data doesn't work since there's only one group, but ggplot expects there to be more than one group and it draws lines within the group. Hence, create a dummy group for ggplot.
+
+typical error: `geom_path: Each group consist of only one observation. Do you need to adjust the group aesthetic?`
+
+```{r}
+library(ggplot2)
+library(magrittr)
+library(dplyr)
+( airquality
+  %>% group_by(Month)
+  %>% summarise(wind = mean(Wind))
+  %>% ggplot(aes(y = wind, x = Month, group = 1))
+    + geom_point()
+    + geom_line()
+ )
+```
+
+with line groups
+
+```{r}
+library(ggplot2)
+( ggplot( within(airquality, {Month %<>% as.factor})
+         ,aes( x = Day
+              ,y = Temp
+              ,group = Month
+              ,colour = Month)
+       )
+  + geom_line(size = .5)
+  + geom_point(size = .7, fill = "white")
+)
+```
+
+### non-numeric argument
+
+typical error: `non-numeric argument to binary operator`
+
+this can be due to many reasons! most common is some syntax error, check trailing `+` and paratheses.
+
+### Histogram
 
 ```{r}
 ggplot(airquality, aes(Wind)) + geom_histogram()
 ```
 
-#### Boxplot
+### Boxplot
 
 ```{r}
 require(ggplot2)
@@ -420,7 +2995,132 @@ require(ggplot2)
 )
 ```
 
-#### Facet grid
+to deal with horizontal labels being to many, you can angle (diagonal, twist, turn, transpose, flip) the labels
+
+```{r}
+aq <-
+  within(airquality, {
+           mthStg = Day %>% cut(breaks = c(0, 10, 20,32), labels = c("A-ge","B-chuu","C-jou"))
+           yrStg = paste(Month, mthStg, sep = "-")
+  })
+( ggplot(aq, aes(yrStg, Temp))
+  + geom_boxplot(outlier.size = .5)
+  + ylab("Temperature")
+  + xlab("Year Stage")
+  + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  )
+```
+
+### Dendrogram
+
+See hierarchical clustering for base `plot` and `hclust`
+
+```{r "dendrogram_ggplot"}
+library(ggplot2)
+library(ggdendro)
+arrestsHc <- USArrests %>% dist %>% hclust("ave")
+arrestsHc %>% ggdendrogram
+arrestsHc %>% ggdendrogram(rotate = TRUE)
+```
+
+```{r "hc dendrogram with graphics::plot"}
+arrestsHc %>% plot
+arrestsHc %>% rect.hclust(5)
+arrestsHc %>% plot
+arrestsHc %>% rect.hclust(h = 40, which = c(2, 6), border = 3:4) # border is for colors
+
+arrestsHc %>% plot
+arrestsHc %>% rect.hclust(3)
+arrestsHc %>% rect.hclust(h = 30, which = c(3, 7), border = 3:4)
+```
+
+extracting dendrogram plot data
+
+```{r "dendrogram data extraction"}
+library(ggplot2)
+arrestsDendroDt <- arrestsHc %>% as.dendrogram %>% dendro_data(type = "rectangle")
+ggplot(segment(arrestsDendroDt)) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
+  coord_flip() +
+  scale_y_reverse(expand = c(.2, 0))
+.Last.value + theme_dendro() # remove axises and background
+
+ggplot(segment(arrestsHc %>% as.dendrogram %>% dendro_data(type = "triangle"))) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
+  coord_flip() +
+  scale_y_reverse(expand = c(.2, 0))
+```
+
+regression tree diagrams
+
+```{r ""}
+library(tree)
+data(cpus, package = "MASS")
+model <- tree(log10(perf) ~ syct + mmin + mmax + cach + chmin + chmax
+              ,data = cpus)
+tree_data <- dendro_data(model)
+ggplot(segment(tree_data)) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend, size = n)
+               ,colour = "blue", alpha = 0.5) +
+  scale_size("n") +
+  geom_text(data = label(tree_data)
+            ,aes(x = x, y = y, label = label), vjust = -0.5, size = 3) +
+  geom_text(data = leaf_label(tree_data)
+            ,aes(x = x, y = y, label = label), vjust = 0.5, size = 2) +
+  theme_dendro()
+
+ggplot(segment(tree_data)) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend) ,colour = "blue") +
+  scale_size("n") +
+  geom_text(data = label(tree_data)
+            ,aes(x = x, y = y, label = label), vjust = -0.5, size = 3) +
+  geom_text(data = leaf_label(tree_data)
+            ,aes(x = x, y = y, label = label), vjust = 0.5, size = 2) +
+  theme_dendro()
+
+ggplot() +
+  geom_segment(data = tree_data$segments
+               ,aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_text(data = tree_data$labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 0) +
+  geom_text(data = tree_data$leaf_labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 1) +
+  theme_dendro()
+```
+
+```{r "trees with rpart"}
+library(rpart)
+rpart_data <-
+  rpart(Kyphosis ~ Age + Number + Start
+        ,method = "class"
+        ,data = kyphosis) %>% dendro_data
+
+ggplot() +
+  geom_segment(data = rpart_data$segments
+               ,aes(x = x, y = y, xend = xend, yend = yend)
+               ,colour = "blue") +
+  geom_text(data = rpart_data$labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 0) +
+  geom_text(data = rpart_data$leaf_labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 1) +
+  theme_dendro()
+
+co2_rpart_data <-
+  rpart(Treatment ~ Type + conc + uptake
+        ,method = "class"
+        ,data = CO2) %>% dendro_data
+
+ggplot() +
+  geom_segment(data = co2_rpart_data$segments
+               ,aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_text(data = co2_rpart_data$labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 0) +
+  geom_text(data = co2_rpart_data$leaf_labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 1) +
+  theme_dendro()
+```
+
+### Facet grid
 
 - use the formula to tell how and what you want to stratify the data on.
 - Plot is split differently if `Species` is on the x-side
@@ -435,13 +3135,61 @@ require(ggplot2)
   )
 ```
 
-#### Matrices {.tabset .tabset-fade .tabset-pills}
+### Themes
 
-##### Overview
+```{r ggplot_themes}
+library(dplyr)
+library(ggplot2)
+diamondsTrunc <- diamonds[1:5000,]
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_bw()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_classic()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_bw()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_dark()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_gray()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_light()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_linedraw()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_minimal()
+  )
+```
+
+### Matrices {.tabset .tabset-fade .tabset-pills}
+
+#### Overview
 
 useful to see pairwise correlation of variables.
 
-##### graphics::pairs
+#### graphics::pairs
 
 pairs with added loess smoother in lower and correlation in upper
 
@@ -462,7 +3210,7 @@ pairs(~Sepal.Length+Sepal.Width+Petal.Length+Petal.Width, data=iris,
       pch=20, main="Iris Scatterplot Matrix")
 ```
 
-##### lattice
+#### lattice
 
 Has options to condition the scatterplot matrix on a factor.
 
@@ -480,9 +3228,22 @@ splom(~iris[1:4],
                  text = list(c("Setosa", "Versicolor", "Virginica"))))
 ```
 
-##### car
+#### car
 
 The `car` package can condition the scatterplot matrix on a factor, and optionally include lowess and linear best fit lines, and boxplot, densities, or histograms in the principal diagonal, as well as rug plots in the margins of the cells.
+
+```{r, eval=FALSE, echo=FALSE}
+devtools::install_github('cran/minqa')
+devtools::install_github('cran/nloptr')
+devtools::install_github('cran/Rcpp')
+devtools::install_github('cran/RcppEigen')
+devtools::install_github('cran/lme4')
+devtools::install_github('cran/pbkrtest')
+devtools::install_github('cran/SparseM')
+devtools::install_github('cran/MatrixModels')
+devtools::install_github('cran/quantreg')
+devtools::install_github('cran/car')
+```
 
 ```{r}
 require(car)
@@ -490,9 +3251,13 @@ scatterplot.matrix(~mpg+disp+drat+wt|cyl, data=mtcars,
   	main="Three Cylinder Options")
 ```
 
-##### gclus
+#### gclus
 
 The `gclus` package provides options to rearrange the variables so that those with higher correlations are closer to the principal diagonal. It can also color code the cells to reflect the size of the correlations.
+
+```{r, eval=FALSE, echo=FALSE}
+devtools::install_github("cran/gclus")
+```
 
 ```{r}
 require(gclus)
@@ -506,7 +3271,7 @@ cpairs(dta, dta.o, panel.colors=dta.col, gap=.5,
 main="Variables Ordered and Colored by Correlation" )
 ```
 
-##### gpairs
+#### gpairs
 
 ```{r}
 require(gpairs)
@@ -542,9 +3307,16 @@ if (allexamples) {
 }
 ```
 
-##### GGally
+#### GGally
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
+devtools::install_github('cran/prettyunits')
+devtools::install_github('cran/progress')
+devtools::install_github('cran/reshape')
+devtools::install_github('cran/GGally')
+```
+
+```{r ggally_matrix_plot }
 require(GGally)
 require(dplyr)
 if (allexamples){
@@ -605,7 +3377,7 @@ custom_car[1, 3] <- personal_plot
 custom_car
 ```
 
-##### ggplot2::plotmatrix
+#### ggplot2::plotmatrix
 
 Depricated.
 
@@ -614,7 +3386,7 @@ Depricated.
 # plotmatrix(with(iris, data.frame(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width)))
 ```
 
-#### ggplot2 with multiple datasets and colors
+### ggplot2 with multiple datasets and colors
 
 ```{r}
 library(dplyr)
@@ -643,15 +3415,53 @@ samples <- factor(c("Passed", "Total"))
 # )
 ```
 
-### Tests {.tabset .tabset-fade .tabset-pills}
+### add linear regression line
 
-#### Overview
+```{r}
+dlmDtExample <-
+  structure(list(date =
+                 structure(c(3407, 3438, 3468, 3499, 3530, 3560, 3591, 3621, 3652, 3683, 3712, 3743, 3773, 3804, 3834,
+                             3865, 3896, 3926, 3957, 3987, 4018, 4049, 4077, 4108, 4138, 4169, 4199, 4230, 4261, 4291,
+                             4322, 4352, 4383, 4414, 4442, 4473, 4503, 4534, 4564, 4595, 4626, 4656, 4687, 4717, 4748,
+                             4779, 4807, 4838, 4868, 4899, 4929, 4960, 4991, 5021, 5052, 5082, 5113, 5144, 5173, 5204,
+                             5234, 5265, 5295, 5326, 5357), class = "Date"),
+                 gas = c(4.9, 4.5, 3.1, 3.1, 4.6, 4.8, 6.7, 8.6, 8.3, 7.2, 9.2, 5.5, 4.7, 4.4,
+                         3.4, 2.8, 4, 5.1, 6.5, 9.2, 7.7, 7.7, 8.9, 5.7, 5, 4.5, 3.3,
+                         2.8, 4, 5.6, 6.6, 10.3, 8.5, 7.9, 8.9, 5.4, 4.4, 4, 3, 3.1, 4.4,
+                         5.5, 6.5, 10.1, 7.7, 9, 9, 6.5, 5.1, 4.3, 2.7, 2.8, 4.6, 5.5,
+                         6.9, 9.5, 8.8, 8.7, 10.1, 6.1, 5, 4.5, 3.1, 2.9, 4.8)),
+            .Names = c("date", "gas"),
+            row.names = c(NA, -65L),
+            class = "data.frame")
+
+( ggplot(dlmDtExample, aes(x = date, y = gas))
+  + geom_line()
+  + ggtitle("UK gas consumption: amount in 106 tonnes coal equivalent")
+  + geom_smooth(method = "lm", se = FALSE)
+)
+
+```
+
+or a polynomial
+
+```{r}
+( ggplot(dlmDtExample, aes(x = date, y = gas))
+  + geom_line()
+  + ggtitle("UK gas consumption: amount in 106 tonnes coal equivalent")
+  + geom_smooth(method = "lm", se = FALSE, formula = y ~ poly(x, 4))
+)
+
+```
+
+## Statistical Tests {.tabset .tabset-fade .tabset-pills}
+
+### Overview
 
 Section for test. Parametric and non-paratmetric.
 
-#### Mann-Whitney-Wilcoxon Test
+### Mann-Whitney-Wilcoxon Test
 
-In statistics, the Mann–Whitney U test (also called the Mann–Whitney–Wilcoxon (MWW), Wilcoxon rank-sum test, or Wilcoxon–Mann–Whitney test) is a nonparametric test of the null hypothesis that two samples come from the same population against an alternative hypothesis, especially that a particular population tends to have larger values than the other.[@wikiMannWhitneyUTest]
+In statistics, the Mann-Whitney U test (also called the Mann-Whitney-Wilcoxon (MWW), Wilcoxon rank-sum test, or Wilcoxon-Mann–Whitney test) is a nonparametric test of the null hypothesis that two samples come from the same population against an alternative hypothesis, especially that a particular population tends to have larger values than the other.[@wikiMannWhitneyUTest]
 
 Unlike the t-test it does not require the assumption of normal distributions. It is nearly as efficient as the t-test on normal distributions.[@wikiMannWhitneyUTest]
 
@@ -661,12 +3471,6 @@ Example code [@wilcoxTest]
 
 ```{r}
 require(graphics)
-## One-sample test.
-x <- c(1.83,  0.50,  1.62,  2.48, 1.68, 1.88, 1.55, 3.06, 1.30)
-y <- c(0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29)
-wilcox.test(y - x, alternative = "less",
-            exact = FALSE, correct = FALSE) # H&W large sample approximation
-
 ## Two-sample test.
 x <- c(0.80, 0.83, 1.89, 1.04, 1.45, 1.38, 1.91, 1.64, 0.73, 1.46)
 y <- c(1.15, 0.88, 0.90, 0.74, 1.21)
@@ -682,7 +3486,7 @@ wilcox.test(Ozone ~ Month, data = airquality,
             subset = Month %in% c(5, 8))
 ```
 
-#### Wilcoxon signed-rank test
+### Wilcoxon signed-rank test
 
 The Wilcoxon signed-rank test is a non-parametric statistical hypothesis test used when comparing two related samples, matched samples, or repeated measurements on a single sample to assess whether their population mean ranks differ (i.e. it is a paired difference test). It can be used as an alternative to the paired Student's t-test, t-test for matched pairs, or the t-test for dependent samples when the population cannot be assumed to be normally distributed. [@lowry11]
 
@@ -691,26 +3495,344 @@ Example code [@wilcoxTest], [@rTutorWilcoxonSignedRankTest]
 ```{r}
 x <- c(1.83,  0.50,  1.62,  2.48, 1.68, 1.88, 1.55, 3.06, 1.30)
 y <- c(0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29)
+
 wilcox.test(x, y, paired = TRUE, alternative = "greater")
+
+## One-sample test version.
+wilcox.test(y - x, alternative = "less",
+            exact = FALSE, correct = FALSE) # H&W large sample approximation
 
 require(MASS)
 wilcox.test(immer$Y1, immer$Y2, paired=TRUE)
 ```
 
-### Supervised {.tabset .tabset-fade .tabset-pills}
+### Contingency table test
 
-#### Notations {#supervised-notations}
+look into the `stats` cheatsheet for usage of these tests.
+
+example data
+
+```{r "data for contingency tables test"}
+library(magrittr)
+partyGenderTable <-
+  structure( c(762, 484, 327, 239, 468, 477)
+            ,.Dim = 2:3
+            ,.Dimnames = structure(list( gender = c("F", "M")
+                                        ,party = c("Democrat", "Independent", "Republican"))
+            ,.Names = c("gender", "party"))
+            ,class = "table")
+
+set.seed(12)
+experimentDt <-
+  data.frame( exposure = gl(2, 20, labels = c("Control", "Treatment"))
+             ,outcome = gl(2, 20, labels = c("Sick", "Healhty")) %>% sample(replace = TRUE)
+             )
+```
+
+#### Pearson chi-square test
+
+can be applied to tables.
+
+```{r}
+(XsqTest <- partyGenderTable %>% chisq.test)
+XsqTest$observed   # observed counts (same as M)
+XsqTest$expected   # expected counts under the null
+XsqTest$residuals  # Pearson residuals
+XsqTest$stdres     # standardized residuals
+```
+
+or to variables directly.
+
+```{r}
+with(experimentDt, { chisq.test(exposure, outcome) })
+```
+
+#### Fisher's exact test
+
+use function `fisher.test` and apply similar to `chisq.test`.
+
+#### McNemar's test
+
+for paired observations. use function `mcnemar.test`.
+
+```{r "McNemars test"}
+(Performance <-
+  matrix(c(794, 86, 150, 570),
+         nrow = 2,
+         dimnames = list("1st Survey" = c("Approve", "Disapprove"),
+                         "2nd Survey" = c("Approve", "Disapprove")))
+ )
+
+Performance %>% mcnemar.test
+```
+
+Here there's a significant difference in the approval from the 1st to the 2nd survey.
+
+### ANOVA
+
+```{r "ANOVA and Tukey HSD pairwise comparisons"}
+library(magrittr)
+warpbreaks %T>%
+  { message("Data Summary"); print(summary(.)); message() } %>%
+  aov(breaks ~ wool + tension, data = .) %T>%
+  { message("ANOVA Summary"); print(summary(.)); message(); message("Pairwise comparisons") } %>%
+  TukeyHSD("tension", ordered = TRUE)
+```
+
+## Supervised {.tabset .tabset-fade .tabset-pills}
+
+### Notations {#supervised-notations}
 
 - $p$ number of variables / parameters to fit
 - $m$ number of variable to try each split (Random Forest)
 
-#### PLS - Partial Least Squares
+### Model selection
+
+BSS - Best subset selection
+
+```{r}
+library(magrittr)
+library(leaps)
+library(ISLR)
+
+Hitters %>% summary
+Hitters %<>% na.omit
+regfit.full <- regsubsets(Salary ~ ., data = Hitters)
+reg.summary <- regfit.full %>% summary
+reg.summary %>% names
+
+"Mallow's CP" %>% message
+reg.summary$cp
+
+"BIC" %>% message
+reg.summary$bic
+
+plot(reg.summary$cp, xlab = "Number of Variables", ylab = "Cp")
+which.min(reg.summary$cp)
+points(8, reg.summary$cp[8], pch = 20, col = "red")
+
+plot(regfit.full, scale = "Cp")
+coef(regfit.full, 8)
+```
+
+### Logistic Regression
+
+In R, `glm` with `family` set is how logistic regression is implemented.
+
+```{r "logistic regression"}
+logRegMod <-
+  glm(wool ~ .,
+      data = warpbreaks,
+      family = binomial(link = "logit"))
+
+logRegMod %>% summary
+
+# calculate model BIC
+BIC <- function(model, nSamples) model %>% AIC(k = log(nSamples))
+BIC(logRegMod, warpbreaks %>% nrow)
+
+# ROC
+logRegMod %>% fitted %>%
+  ROCR::prediction(warpbreaks$wool) %>%
+  ROCR::performance(measure = "tpr",
+                    x.measure = "fpr") %>%
+  (ROCR::plot)
+```
+
+### recursive partitioning
+
+#### CART
+
+clustering with CART. see `ggdendro` for plotting with `ggplot2`
+
+```{r "rpart"}
+library(rpart)
+rpart(Kyphosis ~ Age + Number + Start
+      ,method = "class"
+      ,data = kyphosis) %T>% plot %>% text(use.n = TRUE)
+```
+
+#### Conditional inference trees
+
+Classification in Kyphosis dataset like we did with `rpart`
+
+```{r "party::ctree on Kyphosis data"}
+library(rpart)
+library(partykit)
+# library(party)
+ctree(Kyphosis ~ Age + Number + Start
+      ,data = kyphosis) %T>% print %>% plot(main = "Conditional Inference of Kyphosis data")
+```
+
+regression
+
+```{r "party::ctree regression"}
+set.seed(290875)
+
+ozoneDt <- airquality %>% dplyr::filter(!is.na(Ozone))
+airct <-
+  ctree( Ozone ~ .
+        ,data = ozoneDt)
+airct %T>% print %>% plot
+```
+
+you can grab the data in the different segments clusters using `party::where`. using this you can extract cluster data or aggregates.
+
+```{r "party::ctree segments data/aggregates"}
+library(dplyr)
+ozoneDt %>%
+  mutate(segment = predict(airct)) %>%
+  group_by(segment) %>%
+  summarise(avgOzone = mean(Ozone, na.rm = TRUE))
+
+### Mean squared error
+# mean((airq$Ozone - predict(airct))^2)
+```
+
+```{r "party::ctree regression data extraction"}
+# extract observation terminal node ID using either `predict` or `where`
+airct %>% predict(type = "node")
+# airct %>% party::where # only in party
+```
+
+```{r "party::ctree BinaryTree handling"}
+# airct %>% nodes(4) # extract nodes # party only
+# airct %>% response %>% summary # extract the response variable from the formula. # party only
+```
+
+nominal variable classification
+
+```{r "party::ctree classification"}
+irisct <- ctree(Species ~ .,data = iris)
+irisct %T>% print %>% plot
+table(predict(irisct), iris$Species)
+
+### response of tree for the given observations (probabilities of levels in Species)
+# treeresponse(irisct, newdata = iris[c(1,61, 120),]) # party only
+```
+
+ordinal regression. `ME` from the `mammoexp` data frame is an ordinal factor.
+
+```{r "party::ctree ordinal regression"}
+data("mammoexp", package = "TH.data")
+mammoct <- ctree(ME ~ ., data = mammoexp)
+plot(mammoct)
+
+### response of tree for the given observations (probabilities of levels in ME)
+# treeresponse(mammoct, newdata = mammoexp[1:4,]) # party only
+```
+
+survival analysis.
+
+```{r "party::ctree survival"}
+library("survival")
+data("GBSG2", package = "TH.data")
+GBSG2 %>% str
+GBSG2ct <- ctree(Surv(time, cens) ~ .,data = GBSG2)
+plot(GBSG2ct)
+
+### the tree response here is a whole survival fit (survfit object, e.g. can be plotted)
+# treeresponse(GBSG2ct, newdata = GBSG2[1:2,]) # party only
+```
+
+options (see `?ctree_control` for options)
+
+- `mincriterion` for significance level
+- `testtype` for multiple testing method
+- `minbucket` for smallest possiple bucket
+- `maxsurrogate` unsure!
+
+```{r}
+data(plantTraits, package = "cluster")
+ctree( height ~ .
+      ,data = plantTraits
+      ,mincriterion = .9
+      # ,testtype = "Teststatistic"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,testtype = "Bonferroni"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,mincriterion = .8
+      ,testtype = "Bonferroni"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,minbucket = 10
+      # ,testtype = "Teststatistic"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,maxdepth = 3 #,testtype = "Teststatistic"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,mincriterion = .9 #,testtype = "Teststatistic"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,mincriterion = .9 ,maxsurrogate = 2 # ,testtype = "teststatistic"
+      ) %>% plot
+```
+
+extracting node splits conditions for each terminal node.
+
+```{r "generated data and ctree"}
+# https://stackoverflow.com/questions/21443203/ctree-how-to-get-the-list-of-splitting-conditions-for-each-terminal-node
+# install emilrehnberg/party.readpaths
+# devtools::install_github("emilrehnberg/party.readpaths")
+shiftFirstPart <- function(vctr, divideBy, proportion = .5){
+  vctr[vctr %>% length %>% multiply_by(proportion) %>% round %>% seq] %<>% divide_by(divideBy)
+  vctr
+}
+set.seed(11)
+n <- 13000
+gdt <-
+  data.frame( is_buyer = runif(n) %>% shiftFirstPart(1.5) %>% round %>% factor(labels = c("no", "yes"))
+             ,age = runif(n) %>% shiftFirstPart(1.5) %>%
+               cut(breaks = c(0, .3, .6, 1), include_lowest = TRUE, ordered_result = TRUE, labels = c("low", "mid", "high"))
+             ,city = runif(n) %>% shiftFirstPart(1.5) %>%
+               cut(breaks = seq(0,1,.2), include_lowest = TRUE, labels = c("Chigaco", "Boston", "Memphis", "LA", "ATL"))
+             ,point = runif(n) %>% shiftFirstPart(1.2)
+             )
+gct <- party::ctree( is_buyer ~ ., data = gdt)
+# party.readpaths::readCtreePaths(gct, gdt)
+# dts <- gdt; ct <- gct
+```
+
+```{r}
+detach(package:partykit)
+airq <- subset(airquality, !is.na(Ozone))
+act <-
+  party::ctree( Ozone ~ .
+        ,data = airq
+        # ,maxsurrogate = 3 # partykit
+        ,controls = party::ctree_control(maxsurrogate = 3) # party
+        )
+# partykit:::.list.rules.party(ct)
+party.readpaths::readCtreePaths(act, airq) # party only
+
+data(plantTraits, package = "cluster")
+pct <- party::ctree( height ~ .  ,data = plantTraits)
+party.readpaths::readCtreePaths(pct, plantTraits)
+```
+
+
+### PLS - Partial Least Squares
 ```{r}
 ```
 
-#### Random Forests {.tabset .tabset-fade .tabset-pills}
+### Random Forests {.tabset .tabset-fade .tabset-pills}
 
-##### Overall notes
+#### Overall notes
 
 - After each tree is built, all of the data are run down the tree, and proximities are computed for each pair of cases. [@rfWorkings]
     - If two cases occupy the same terminal node, their proximity is increased by one.
@@ -736,7 +3858,7 @@ If you are using `predict`, you might stuble upon the following error if you for
 Error in predict.randomForest(model, newdata = CV) :  No forest component in the object
 ```
 
-##### Classification
+#### Classification
 
 - Categorical (e.g. Binary) Response
 - authors suggest parameters should be (See [Notations](#supervised-notations))[@esl2rfDetails]
@@ -744,6 +3866,10 @@ Error in predict.randomForest(model, newdata = CV) :  No forest component in the
     - $m = \sqrt(p)$
 
 Example code [@rfPackage] [@sll10a]
+
+```{r, eval=FALSE, echo=FALSE}
+devtools::install_github('cran/randomForest')
+```
 
 ```{r}
 require(randomForest)
@@ -811,7 +3937,7 @@ randomForest(Species ~ .,
              sampsize=c(20, 30, 20))
 ```
 
-##### Regression
+#### Regression
 
 - continuous response
 - authors suggest parameters should be (See [Notations](#supervised-notations))[@esl2rfDetails]
@@ -824,6 +3950,7 @@ Example code [@rfPackage] [@sll10b]
 require(MASS)
 require(randomForest)
 require(magrittr)
+library(ggplot2)
 ```
 
 ```{r}
@@ -850,7 +3977,7 @@ forests <-
   })
 
 # Variables of highest "Importance"
-forests[[maxVarsToTry]] %>% importance %>% round(2) %>% as.data.frame %>% arrange(desc(`%IncMSE`))
+forests[[maxVarsToTry]] %>% importance %>% round(2) %>% as.data.frame %>% arrange(desc(`%IncMSE`)) # Removes row names >.<
 
 testData <- Boston[-train,]
 errors <-
@@ -861,18 +3988,16 @@ errors <-
                  pred <- predict(forest, testData)
                  with(testData,
                       mean((medv - pred)^2))
-               }))
-cols <- c("red", "blue")
-matplot(errors$varsPerSplit,
-        errors %>% subset(select = -c(varsPerSplit)),
-        pch=19,
-        col=cols,
-        type="b",
-        ylab="Mean Squared Error")
-legend("topright",
-       legend=c("OOB", "Test"),
-       pch=19,
-       col=cols)
+               })) %>%
+  tidyr::gather( src
+                ,errors
+                ,-c(varsPerSplit))
+
+ggplot(errors, aes(x = varsPerSplit %>% as.factor, y = errors, group = src, color = src)) +
+  geom_line() +
+  geom_point() +
+  xlab("Variables per split") +
+  ylab("Mean Squared Error")
 
 ## data(airquality)
 set.seed(131)
@@ -919,7 +4044,7 @@ randomForest(Species ~ ., data=iris, maxnodes=4, ntree=30) %>% treesize
 iris.rrf$proximity %>% str
 ```
 
-##### Imputation
+#### Imputation
 
 Random forests has two ways of replacing missing values.
 
@@ -968,14 +4093,18 @@ randomForest(Species ~ ., iris.na, na.action = na.omit)
 randomForest(Species ~ ., iris.imputed)
 ```
 
-#### Boosting { .tabset .tabset-fade .tabset-pills }
+### Boosting { .tabset .tabset-fade .tabset-pills }
 
-##### Regression
+#### Regression
 
 random forest boosting with continous response.
 
 - authors suggest $m = \sqrt(p)$ (See [Notations](#supervised-notations))
 - see latter half of `mpv Movies/statistical-learning/08-tree-based-methods/StatsLearning Lect10 R trees B 111213-IY7oWGXb77o.mp4`
+
+```{r, eval=FALSE, echo=FALSE}
+devtools::install_github("cran/gbm")
+```
 
 ```{r message=FALSE}
 require(MASS)
@@ -1027,7 +4156,7 @@ abline(h = min(errors$test),
        col="red")
 ```
 
-##### Classification
+#### Classification
 
 ```{r message=FALSE}
 require(magrittr)
@@ -1073,24 +4202,648 @@ predictions <-
 #  )
 ```
 
-### Unsupervised { .tabset .tabset-fade .tabset-pills }
+### Classification
 
-#### Overview
+Other classification methods are e.g.
+
+- C4.5 (weka package?) can be used for classification with more labels
+    - categorical inputs splits in multiple nodes, one for each level value
+
+## Unsupervised { .tabset .tabset-fade .tabset-pills }
+
+### Overview
 
 methods for unsupervised learning.
 
-#### PCA/PCR
+### PCA/PCR
 
-#### Random Forest
+principal component analysis
+
+```{r "PCA USArrests"}
+prcomp(USArrests %>% dplyr::select(-state))  # inappropriate
+
+printSummary <- function(x) x %>% summary %>% print
+prcomp(USArrests %>% dplyr::select(-state), scale = TRUE) %T>% printSummary %>% biplot
+
+# using formula
+prcomp(~ Murder + Assault + Rape, data = USArrests, scale = TRUE)
+
+# only works with numerical variables
+# prcomp(warpbreaks %>% dplyr::select(-breaks), scale = TRUE) # doesn't work
+```
+
+PCA components with color from factor variable.
+
+```{r "PCA iris"}
+prcompIris <- prcomp(iris %>% dplyr::select(-Species), scale = TRUE)
+prcompIris$x %>% as.data.frame %>%
+  ggplot2::ggplot(ggplot2::aes(x = PC1, y = PC2, color = iris$Species)) + ggplot2::geom_point()
+```
+
+to fortify these simple PCA plots look up [fortify PCA ploting](https://cran.r-project.org/web/packages/ggfortify/vignettes/plot_pca.html)
+
+### hierarchical clustering
+
+calculate a distance matrix and run it through `hclust`. The `hclust` object can be plotted through `graphics::plot`
+
+```{r "hierarchical clustering"}
+USArrests %>% dist %>% hclust("average") %>% plot
+USArrests %>% dist %>% hclust("complete") %>% plot(hang = -1)
+USArrests %>% dist %>% hclust(method = "average")
+USArrests %>% dist %>% hclust(method = "complete")
+```
+
+```{r "hclust plot w labels"}
+npk %>% dplyr::select(-block) %>% dist %>% hclust("complete") %>% plot(hang = -1)
+npk %>% dplyr::select(-block) %>% dist %>% hclust("complete") %>% plot(hang = -1, labels = npk$block)
+```
+
+prune tree, compare 2 and 4 group pruning
+
+```{r "simple prune tree"}
+USArrests %>% dist %>% hclust %>%
+  cutree(k = c(2,4)) %>% as.data.frame %>%
+  with({ table(get("2"), get("4")) })
+```
+
+1. Do centroid clustering and *squared* Euclidean distance,
+2. cut the tree into ten clusters
+3. reconstruct the upper part of the tree from the cluster centers.
+
+```{r "hclust cut tree example"}
+hc <- hclust(dist(USArrests)^2, "cen")
+memb <- cutree(hc, k = 10)
+cent <-
+  sapply(1:10, function(groupIndex){
+    colMeans(USArrests[memb == groupIndex, 1:4, drop = FALSE])
+   }, simplify = FALSE) %>%
+    Reduce(f = rbind) %>% as.matrix
+
+hc1 <- dist(cent)^2 %>% hclust(method = "cen", members = table(memb))
+opar <- par(mfrow = c(1, 2))
+plot(hc,  labels = FALSE, hang = -1, main = "Original Tree")
+plot(hc1, labels = FALSE, hang = -1, main = "Re-start from 10 clusters")
+par(opar)
+```
+
+### Random Forest
 
 Example code [@rfPackage]
 
-```{r}
+```{r "MDS with RF"}
 require(randomForest)
 ## The `unsupervised' case:
 ##data(iris)
 set.seed(17)
-(iris.urf <- randomForest(iris %>% dplyr::select(-Species)))
+iris.urf <- randomForest(iris %>% dplyr::select(-Species))
 MDSplot(iris.urf, iris$Species) # Species sets the colors.
 ```
+
+Works with a combination of numeric and factor variables.
+
+```{r "RF MDS w factors & numericals"}
+co2.rf <- randomForest(CO2)
+MDSplot(co2.rf, CO2$Type)
+
+co2.rf <- randomForest(CO2 %>% dplyr::select(-Treatment, -Type))
+MDSplot(co2.rf, CO2$Type)
+```
+
+only factors also works
+
+```{r "RF MDS w factors only"}
+warp.rf <- randomForest(warpbreaks %>% dplyr::select(-breaks))
+MDSplot(warp.rf, 1:2)
+```
+
+### Dissimilarity Matrix Calculation
+
+`cluster::daisy`
+
+Calculates pairwise dissimilarities (distances) between observations. Variables may be of mixed types.
+
+```{r "daisy setup"}
+library(cluster)
+library(magrittr)
+data(agriculture)
+agriculture %>% str
+```
+
+daisy with euclidean distance (non-standardized variables i.e. default)
+
+```{r "daisy euclidean distance"}
+( d.agr <-
+  agriculture
+  %>% daisy(metric = "euclidean", stand = FALSE)
+  %T>% print
+  %>% as.matrix %>% .[, "DK"]
+ )
+```
+
+compare with gower metric
+
+```{r "daisy gower metric"}
+agriculture %>% daisy(metric = "gower") # %>% hclust %>% plot
+```
+
+```{r "daisy flower example setup"}
+data(flower)
+flower %>% str
+flower %>%
+  daisy(type = list(asymm = "V3")) %>%
+  summary
+flower %>%
+  daisy(type = list( asymm = c("V1", "V3")
+                    ,ordratio = "V7")) %>%
+  summary
+
+# hierarchical clustering
+flower %>% daisy(type = list(asymm = 3)) %>% hclust %>% plot
+```
+
+### Agglomerative nesting (hierarchical clustering)
+
+`cluster::agnes`
+
+Computes agglomerative hierarchical clustering of the dataset.
+
+```{r "agnes examples setup"}
+data(votes.repub)
+```
+
+```{r "agnes example 1"}
+par(mfrow = c(2, 1))
+( votes.repub
+  %>% agnes(metric = "manhattan", stand = TRUE)
+  %T>% print
+  %>% plot
+ )
+```
+
+### Forecasting { .tabset .tabset-fade .tabset-pills }
+
+Section for forecasting
+
+```{r, eval=FALSE, echo=FALSE}
+devtools::install_github("cran/timeDate")
+devtools::install_github("cran/quadprog")
+devtools::install_github("cran/tseries")
+devtools::install_github("cran/fracdiff")
+devtools::install_github("cran/RcppArmadillo")
+devtools::install_github("cran/forecast")
+```
+
+```{r}
+library(magrittr)
+library(mgcv)
+library(forecast)
+x <-
+  rpois(100, 1 + sin(seq(0, 3*pi, l=100))) %>%
+  ts(f = 12)
+tt <- 1:100
+(season <- x %>% seasonaldummy) %>% head
+# x <- ts(rpois(100,1+sin(seq(0,3*pi,l=100))),f=12)
+fit <- gam(x ~ s(tt, k=5) + season,
+           family="poisson")
+fit %>% plot
+fit %>% summary
+
+fcast <-
+  predict(fit,
+          se.fit=TRUE,
+          newdata=list(tt=101:112,
+                       season=seasonaldummy(x,h=12)))
+
+x %>% plot(xlim = c(0, 10.5))
+fcast$fit %>%
+  exp %>%
+  ts(f = 12, s = 112/12) %>%
+  lines(col = 2)
+fcast %>%
+  { .$fit - 2*.$se } %>%
+  exp %>%
+  ts(f = 12, s = 112/12) %>%
+  lines(col = 2, lty = 2)
+fcast %>%
+  { .$fit + 2*.$se } %>%
+  exp %>%
+  ts(f = 12, s = 112/12) %>%
+  lines(col = 2, lty = 2)
+```
+
+## Best practices {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Section for listing best programming practices in R.
+
+### function checks
+
+Given
+
+```{r}
+wt_mean <- function(x, w) sum(x * w) / sum(x)
+wt_mean(1:6, 1:3)
+```
+
+there's gotchas with R's vector recycling rules. Use checks
+
+```{r}
+wt_mean <- function(x, w) {
+  if (length(x) != length(w)) {
+    stop("`x` and `w` must be the same length", call. = FALSE)
+  }
+  sum(w * x) / sum(x)
+}
+# wt_mean(1:6, 1:3) # > Error: `x` and `w` must be the same length
+```
+
+you can use `stopifnot` function to do multiple checks and get informative messages back
+
+```{r}
+wt_mean <- function(x, w, na.rm = FALSE) {
+  stopifnot(is.logical(na.rm), length(na.rm) == 1)
+  stopifnot(length(x) == length(w))
+
+  if (na.rm) {
+    miss <- is.na(x) | is.na(w)
+    x <- x[!miss]
+    w <- w[!miss]
+  }
+  sum(w * x) / sum(x)
+}
+# wt_mean(1:6, 6:1, na.rm = "foo") #> Error: is.logical(na.rm) is not TRUE
+```
+
+Note that when using `stopifnot` you assert what should be true rather than checking for what might be wrong.
+
+## installation of packages  {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+notes for installing packages
+
+### after R upgrade
+
+try to run `sudo R CMD javareconf` in the terminal.
+
+```{r, eval = FALSE}
+install.packages(c("devtools", "magrittr", "rJava", "dplyr"))
+library(magrittr)
+installFromCran <- function(pkgs) devtools::install_github(pkgs %>% paste("cran", ., sep = "/"))
+partyPkgs <- c('mvtnorm', 'modeltools', 'zoo', 'sandwich', 'strucchange', 'TH.data', 'survival', 'multcomp', 'coin', 'party')
+tibblePkgs <- c('rlang', 'tibble')
+roxygen2Pkgs <- c('brew', 'backports', 'rprojroot', 'desc', 'commonmark', 'xml2', 'roxygen2')
+testthatPkgs <- c('crayon', 'praise', 'testthat')
+rattlePkgs <- c("RGtk2", "rattle")
+lintrPkgs <- c( "registry", "iterators", "pkgmaker", "registry", "rngtools", "gridBase", "foreach", "doParallel"
+               ,"NMF", "irlba", "rex", "stringdist", "igraph", "lintr")
+rmdPkgs <- c("htmltools", "bitops", "caTools", "base64enc", "rmarkdown")
+xlconnectPkgs <- c('XLConnectJars', 'XLConnect')
+dplyrPkgs <- c( "bindr", "plogr", "bindrcpp", "glue", "pkgconfig", "rlang", "dplyr" )
+rsqlPkgs <- c("dplyr", "dbplyr", "RSQLServer")
+c( partyPkgs, tibblePkgs, roxygen2Pkgs, testthatPkgs, rattlePkgs, lintrPkgs, rmdPkgs
+  ,xlconnectPkgs, dplyrPkgs, rsqlPkgs, "tidyr", "matrixcalc", "dlm", "dbplyr") %>% installFromCran
+
+devtools::install_github(c("emilrehnberg/party.readpaths"))
+# devtools::install_github(c( 'emilrehnberg/party.readpaths', 'jmp75/rClr'
+#                            ,"bescoto/RMSSQL", "bescoto/dplyr.mssql"))
+
+# copy below for running on server to install packages
+library(magrittr)
+installFromCran <- function(pkgs) devtools::install_github(pkgs %>% paste("cran", ., sep = "/"))
+dplyrPkgs <- c("bindr", "bindrcpp", "glue", "pkgconfig", "rlang", "dplyr" )
+installFromCran(dplyrPkgs)
+```
+
+### RODBC
+
+and `RODBCext`. perform before trying to install on mac. look for other solutions on linux/mac.
+
+```
+brew update && brew install unixODBC
+```
+
+### party
+
+install `party`.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/party')
+```
+
+installing `party` dependencies.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/mvtnorm')
+devtools::install_github('cran/modeltools')
+devtools::install_github('cran/zoo')      # sandwich dependency
+devtools::install_github('cran/sandwich')
+devtools::install_github('cran/strucchange')
+devtools::install_github('cran/TH.data')  # multcomp dependency
+devtools::install_github('cran/multcomp') # coin dependency
+devtools::install_github('cran/coin')
+devtools::install_github('cran/party')
+```
+
+### partykit
+
+install `partykit`.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/partykit')
+```
+
+installing `partykit` dependencies.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/Formula')
+```
+
+### tibble
+
+installing `tibble`
+
+```{r, eval = FALSE}
+devtools::install_github('cran/rlang')
+devtools::install_github('cran/tibble')
+```
+
+### roxygen2
+
+```{r, eval = FALSE }
+devtools::install_github('cran/brew')
+devtools::install_github('cran/backports') # rprojroot dependency
+devtools::install_github('cran/rprojroot') # desc dependency
+devtools::install_github('cran/desc')
+devtools::install_github('cran/commonmark')
+devtools::install_github('cran/xml2')
+devtools::install_github('cran/roxygen2')
+```
+
+### testthat
+
+```{r, eval = FALSE }
+devtools::install_github('cran/crayon')
+devtools::install_github('cran/praise')
+devtools::install_github('cran/testthat')
+```
+
+### rattle
+
+```{r, eval = FALSE }
+devtools::install_github('cran/rattle')
+```
+
+installing `rattle` dependencies. install `gtk+` via brew.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/RGtk2')
+```
+
+### rJava
+
+try to run `sudo R CMD javareconf` in the terminal.
+
+```{r, eval=FALSE , echo=FALSE}
+install.packages("rJava")
+```
+
+### lintr
+
+installing lintr
+
+```{r, eval = FALSE, echo = FALSE}
+devtools::install_github("cran/registry") # pkgmaker dependency
+devtools::install_github("cran/iterators") # foreach dependency
+# NMF dependencies
+devtools::install_github( file.path("cran", c( "pkgmaker", "registry", "rngtools", "gridBase", "foreach", "doParallel" )))
+devtools::install_github( file.path("cran", c("NMF", "irlba"))) # igraph dependencies
+devtools::install_github( file.path("cran", c("rex", "stringdist", "igraph")))
+devtools::install_github("cran/lintr")
+
+devtools::install_github( file.path("cran", c("rex", "stringdist", "igraph")))
+devtools::install_github("cran/lintr")
+```
+
+### RSQLServer
+
+install `rJava`.
+
+```{r, eval=FALSE, echo=FALSE }
+# install.packages("RSQLServer")
+devtools::install_github('jmp75/rClr') # brew install mono # for this
+devtools::install_github('imanuelcostigan/RSQLServer')
+# CAREFUL! Do NOT install: devtools::install_github('agstudy/rsqlserver')
+```
+
+### dplyr.mssql
+
+```{r, eval=FALSE , echo=FALSE}
+devtools::install_github("bescoto/RMSSQL")
+devtools::install_github("bescoto/dplyr.mssql") # this package
+```
+
+Also you'll need these packages: `DBI`, `dplyr`, `RJDBC`, `assertthat`, `dplyr`, `stringr`
+
+If there's a timeout-problem, try changing download method.
+
+```{r, eval=FALSE , echo=FALSE}
+options(download.file.method = "wininet")
+# devtools::install_github("bescoto/dplyr.mssql", method = "wininet") # works? instead of setting the session options?
+```
+
+if there's problems with stringi, try below (the latter argument is for dealing with the case where the package has no matching version for R)
+
+```{r, eval=FALSE , echo=FALSE}
+R CMD INSTALL stringi_1.1.1.tar.gz --configure-args='--disable-pkg-config'
+```
+
+#### Dependency hell
+
+`dplyr`, `RSQLServer` and `dplyr.mssql` has this dependency hell going on ATM (161121). `dplyr.mssql` depends on `dplyr` version 4 but
+latest `RSQLServer` requires >5.0. Downgrade `RSQLServer` and `dplyr` to make `dplyr.mssql` happy.
+
+```{sh, eval=FALSE, echo=FALSE}
+wget https://github.com/imanuelcostigan/RSQLServer/archive/v0.2.0.tar.gz
+R CMD INSTALL v0.2.0.tar.gz
+
+wget https://cran.rstudio.com/src/contrib/Archive/dplyr/dplyr_0.4.3.tar.gz
+R CMD INSTALL dplyr_0.4.3.tar.gz
+
+# Old link doesn't work
+# wget https://cran.rstudio.com/src/contrib/RSQLServer_0.2.0.tar.gz
+# R CMD INSTALL RSQLServer_0.2.0.tar.gz
+```
+
+## workflows
+
+### Logging {.tabset .tabset-fade .tabset-pills}
+
+#### Overview
+
+Section for understanding logging and directing output streams.
+
+#### redirecting IO
+
+all IO, stdout, stderr and warnings are sent to standard output stream.
+
+```{r "redirect IO"}
+#!/bin/usr/env Rscript
+sink(stdout(), type="message") # MAIN command for redirection
+message("message: testing 12")
+warning("achtung: deutchen furher")
+error("E$ failure") # doesn't work, using `stop` if you want to send error messages and stop the execution.
+```
+
+[source](http://mazamascience.com/WorkingWithData/?p=888)
+
+### variable relations {.tabset .tabset-fade .tabset-pills}
+
+#### Overview
+
+Section for investigating relations between variables
+
+See plots section for pairwise correlation plots.
+
+#### pairwise correlations
+
+`stats::cor `
+
+only works on numerical variables
+
+```{r stats_cor_pairwise}
+cor(airquality[,c("Ozone", "Wind", "Temp")],
+    use = "complete")
+```
+
+#### descriptives over strata
+
+stratum / labels / levels
+
+```{r strata_descriptives}
+with(CO2, {
+  aggregate(uptake
+            ,by = list(Type = Type, Treatment = Treatment)
+            ,FUN = summary)
+})
+
+with(CO2, {
+  aggregate(CO2[,c("uptake", "conc")]
+            ,by = list(Type = Type, Treatment = Treatment)
+            ,FUN = median)
+})
+```
+
+`dplyr` version might be more performant for single values, but you can't use `summary` like above.
+
+```{r strata_descriptives_dplyr}
+library(dplyr)
+( CO2
+  %>% group_by(Type, Treatment)
+  %>% summarise(uptakeMean = mean(uptake), updateMedian = median(uptake), concMean = mean(conc))
+  )
+```
+
+#### fill out missing combinations / gaps
+
+if there's gaps in the data where there should data, maybe 0 data, you can join in a dataset with full combinations.
+
+```{r}
+library(dplyr)
+incompleteDt <-
+  data.frame( cdate = c(201609, 201610, 201610, 201611, 201612, 201612)
+             ,status = c("Bad", "OK", "Bad", "OK", "OK", "Bad")
+             ,metric = c(runif(6)))
+completeLabels <- expand.grid(cdate = c(201609, 201610, 201611, 201612), status = c("Bad", "OK"))
+incompleteDt %>% right_join(completeLabels) %>% mutate(metric = ifelse(is.na(metric), 0, metric))
+```
+
+#### clustering with mixed variable types
+
+taken from [article](https://www.r-bloggers.com/clustering-mixed-data-types-in-r/)
+
+```{r}
+library(ISLR)
+College %>% str
+```
+
+### A/B testing {.tabset .tabset-fade .tabset-pills}
+
+#### Overview
+
+Section for A/B testing workflow
+
+#### Bayesian A/B testing
+
+main function is th `bayesTest` function. Which takes two samples (A and B), conjugate prior parameters (see `?bayesTest` for expected named vectors of parameters) and the distribution for likelihood.
+
+```{r "plots setup"}
+opar <- par(mfrow = c(2, 2))
+```
+
+##### with Bernoulli posterior
+
+```{r "bayesAB package Bernoulli posterior"}
+nSamples <- 250
+A_binom <- rbinom(nSamples, size = 1, prob = .25) # size = 1 makes sure it's a bernoulli trial, so the outcome is either 0 or 1
+B_binom <- rbinom(nSamples, size = 1, prob = .2)
+
+# let's ignore that we know the samples in this case
+# we know the Bernoulli distribution probability is ~0.2-0.3.
+# with this in mind, we want prior parameters for a Beta that roughly matces these (Beta dist is conjugate prior to Binomial)
+
+bayesAB::plotBeta(100, 200) # looks a little off
+bayesAB::plotBeta(65, 200) # looks way better
+
+(AB1 <-
+  bayesAB::bayesTest( A_binom
+                     ,B_binom
+                     ,priors = c('alpha' = 65, 'beta' = 200) # params for a Beta (conjugate to Binomial)
+                     ,distribution = 'bernoulli'
+                     ))
+AB1 %>% summary
+AB1 %>% plot
+```
+
+##### with Poisson posterior
+
+```{r "bayesAB package Poisson posterior"}
+A_pois <- rpois(nSamples, 6.5)
+B_pois <- rpois(nSamples, 5.5)
+
+bayesAB::plotGamma(30, 5) # 5-7 seem likely enough
+
+(AB2 <-
+  bayesAB::bayesTest( A_pois
+                     ,B_pois
+                     ,priors = c(shape = 30, rate = 5)
+                     ,distribution = 'poisson'
+                     ))
+AB2 %>% summary
+AB2 %>% plot
+```
+
+##### combining distribution
+
+The combination here refers to combining the events in the Bernoulli and Poisson examples. The example being the first example is the click-through event and the second one being the number of clicks on the page. But the second example is based on the situation that the lead is already on the page. What about the expected number of clicks from the get-go? Then you'd have to combine the first and second example somehow and luckily `bayesAB::combine` does this.
+
+```{r "bayesAB::combine"}
+(AB3 <-
+  bayesAB::combine( AB1
+                   ,AB2
+                   ,f = multiply_by
+                   ,params = c('Probability', 'Lambda') # the kind of parameters for the posteriors in AB1/2
+                   ,newName = 'Expectation'
+                   )
+ )
+AB3 %>% summary # note the lower expecations on clicks here
+AB3 %>% plot
+```
+
+```{r "finish plot"}
+par(opar)
+```
+
+## References
 
