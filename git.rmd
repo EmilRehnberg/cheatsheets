@@ -54,3 +54,15 @@ a67003b HEAD@{8}: rebase: aborting
 3094d4d HEAD@{9}: reset: moving to HEAD~
 ffd9abd HEAD@{10}: reset: moving to HEAD~
 ```
+
+### reset credentials on OSX
+
+to reset git credentials (e.g. after password update)
+
+```
+git credential-osxkeychain erase
+<CR>
+```
+
+to erase old credentials, git prompts user again for PW (and doesn't ask for it again)<Paste>
+
