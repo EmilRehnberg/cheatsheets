@@ -1,0 +1,97 @@
+---
+title: "unix cheatsheet"
+author: Emil Rehnberg
+bibliography: refs.bib
+csl: shiki.csl
+output:
+  pdf_document:
+    highlight: zenburn
+  html_document:
+    toc_float: TRUE
+    css: styles.css
+---
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 200)
+```
+
+```{r echo=FALSE, eval=FALSE}
+require(rmarkdown); require(shiny)
+rmdFilePath <- "unix.rmd"
+allexamples <- FALSE
+rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
+```
+
+## 目的
+
+cheatsheet for unix.
+
+## scheduled jobs {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+section for scheduled jobs, aka cron jobs
+
+### cron format
+
+5 / 6 digits indicating the timing of the job
+
+TODO: explain this further
+
+### edit jobs
+
+```sh
+crontab -e
+```
+
+## users and groups {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+[how-to-add-users](https://help.ubuntu.com/community/AddUsersHowto)
+
+### add user
+
+```sh
+sudo adduser <username>
+```
+
+### add user to group
+
+```sh
+sudo addgroup <groupname>
+```
+
+### add user to existing group
+
+```sh
+sudo adduser <username> <groupname>
+```
+
+### show group members
+
+```sh
+getent group <groupname>
+```
+
+## workflows {.tabset .tabset-fade .tabset-pills}
+
+### public keys setup for ssh
+
+use private / public rsa keys to make ssh-logins more convenient :D
+
+```sh
+ssh-keygen
+ssh-add ~/.ssh/id_rsa_password
+ssh-copy-id -i ~/.ssh/id_rsa_password wms@de-2204.d.ipeer.se
+```
+
+### file compression
+
+in order to compress a folder into a zip file
+
+```sh
+zip pack.zip folder-with-files    # just adds the folder!
+zip -r pack.zip folder-with-files # add the r(ecursive) flag to zip the files inside the folder
+```
+
