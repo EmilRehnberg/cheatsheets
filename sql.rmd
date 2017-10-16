@@ -19,7 +19,6 @@ options(width = 200)
 ```{r echo=FALSE, eval=FALSE}
 library(rmarkdown); library(shiny)
 rmdFilePath <- "sql.rmd"
-allexamples <- FALSE
 rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
 ```
 
@@ -190,6 +189,46 @@ SELECT id, customer_id, order_date, shipping_country
    AND o1.order_date = o2.{{maxdate}};
 ```
 
+#### Relational division
+
+return orders that contain a basket with products 2, 3, and 4.
+
+```sql
+SELECT orderid
+FROM (SELECT
+        orderid,
+        COUNT(CASE WHEN productid = 2 THEN productid END) AS P2,
+        COUNT(CASE WHEN productid = 3 THEN productid END) AS P3,
+        COUNT(CASE WHEN productid = 4 THEN productid END) AS P4
+      FROM dbo.OrderDetails
+      GROUP BY orderid) AS P
+WHERE P2 = 1 AND P3 = 1 AND P4 = 1;
+```
+
+derived table returns `A` and `B` rows from
+
+```
+order_id P2   P3   P4
+-------- ---- ---- --
+A        1    1    1
+B        1    1    1
+C        NULL 1    1
+D        NULL NULL 1
+```
+
+#### Logical and bit
+
+for logicals expression in BIT to access tools yielding True/False
+
+```sql
+SELECT
+  CAST(CASE WHEN [lf].[InvoiceDimDateId] > 0 THEN 1
+            ELSE 0
+       END
+       AS BIT)
+FROM dbo.Order
+```
+
 ### Postgresql { .tabset .tabset-fade .tabset-pills }
 
 #### Overview
@@ -222,6 +261,14 @@ ORDER BY customer_id::remember last order,
 #### Overview
 
 MS sql dialect transact-sql for SQL server
+
+#### Date to integer convertion
+
+to convert a datetime or date column/value to a dateId in integer use the `CONVERT` function
+
+```sql
+CONVERT(VARCHAR(8), StartTime, 112)
+```
 
 #### Triggers
 
@@ -265,6 +312,33 @@ two orthogonal classifications
     - updatable: has a single column constraint on each participating table to determine which table a row belongs to
     - not updatable: -
 
+#### Comparing Partitioned Views / Tables
+
+partitioned table
+parts must reside in the same DB
+must have same constraints and primary keys
+partitioned view
+can be split up over servers and machines
+can be slower and quicker than table defending on the systems
+optimazation is typically more complex
+more objects
+
+#### create empty table
+
+```sql
+SELECT TOP (0) column_list
+INTO table
+FROM other_table
+```
+
+#### emptying a table
+
+keep table columns, reset ID counting, no logging.
+
+```sql
+TRUNCATE TABLE tableName;
+```
+
 #### archive deleted records
 
 archive deleted data with `DELETE OUTPUT (INTO)`
@@ -277,6 +351,26 @@ BEGIN
       INTO archive(orderid, date)
   WHERE date < '20060101';
   IF @@rowcount < 5000 BREAK;
+END
+```
+
+#### delete lots of rows in a table
+
+if you want delete lots of rows in a table
+
+- TRUNCATE TABLE not doing it
+- want logging
+- want to keep a few rows
+- technique is useful when you want to archive deletions w DELETE OUTPUT
+
+```sql
+DELETE in batches
+WHILE 1 = 1
+BEGIN
+  DELETE TOP (5000)
+  FROM orders
+  WHERE orderdate < '20060101';
+  IF @@rowcount <= 5000 BREAK;
 END
 ```
 
@@ -410,6 +504,70 @@ INTO #CachedPages
     EXEC dbo.GetRows
       @n = @to_rownum::set proc argument @n to @to_rownum;
 ...
+```
+
+#### PIVOT clause
+
+- operator allowing you to rotate, or pivot, data between columns and rows, performing aggregations along the way.
+- requires alias
+    - will otherwise return Incorrect syntax near ';'.
+
+```sql
+SELECT *
+  FROM (
+  SELECT
+     empid,
+     YEAR(orderdate) AS year,
+     val
+    FROM Sales.OrderValues)
+ PIVOT(SUM(val)
+  FOR year
+   IN([2006],[2007],[2008]) AS P);
+```
+
+query generates the following
+
+```
+empid 2006     2007      2008
+----- -------- --------- --------
+3     18223.96 108026.17 76562.75
+6     16642.61 43126.38  14144.16
+9     9894.52  26310.39  41103.17
+7     15232.16 60471.19  48864.89
+1     35764.52 93148.11  63195.02
+4     49945.12 128809.81 54135.94
+2     21757.06 70444.14  74336.56
+5     18383.92 30716.48  19691.90
+8     22240.12 56032.63  48589.54
+```
+
+e.g. query for the total value of orders handled by each employee for each order year. output to have a row for each employee, a column for each order year, and the total value in the intersection of each employee and year.
+
+#### Relational division
+
+return orders that contain a basket with products 2, 3, and 4.
+using PIVOT:
+
+```sql
+SELECT orderid
+FROM (
+  SELECT orderid, productid
+  FROM dbo.OrderDetails) AS D
+  PIVOT(COUNT(productid)
+    FOR productid
+    IN([2],[3],[4])) AS P
+WHERE [2] = 1 AND [3] = 1 AND [4] = 1;
+```
+
+derived table returns `A` and `B` rows from
+
+```
+order_id P2   P3   P4
+-------- ---- ---- --
+A        1    1    1
+B        1    1    1
+C        NULL 1    1
+D        NULL NULL 1
 ```
 
 ### SQLite { .tabset .tabset-fade .tabset-pills }
