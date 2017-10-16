@@ -37,7 +37,77 @@ dlmAbbrTag <- tags$abbr("DLM", title="Dynamic Linear Model")
 
 cheatsheet for statistics. it's a place to dump thoughtworthy stuff that I might want to look up for reminders.
 
+## concepts {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+grab bag of concepts
+
+### Over-dispersion (overdispersion)
+
+If the sampling variance of a response variable $Y_i$ is significantly greater than that predicted by an expected probability distribution, $Y_i$ is said to be over-dispersed.
+
+### Moments
+
+A moment is a specific quantitative measure, used in both mechanics and statistics, of the shape of a set of points.
+
+If the points represent mass, then the
+
+- zeroth moment is the total mass
+- first moment divided by the total mass is the center of mass
+- the second moment is the rotational inertia
+
+If the points represent probability density, then the
+
+- zeroth moment is the total probability (i.e. one)
+- first moment is the mean
+- second central moment is the variance
+- third moment is the skewness
+- fourth moment (with normalization and shift) is the kurtosis.
+
+
 ## Methodologies {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+tests, data mining, modelling, prediction stuff
+
+### LOESS
+
+- stands for LOcal regrESSion.
+- along with LOWESS (locally weighted scatterplot smoothing), they are two strongly related non-parametric regression methods that combine multiple regression models in a k-nearest-neighbor-based meta-model.
+- "LOESS" is a later generalization of LOWESS.
+
+### Contingency tables [@contingencyTableTestsZhou] [@contingencyTableTestsPresentation]
+
+Overview:
+
+- Typically use Pearson's chi-square test
+- use Fisher's exact test if cells are small - even though the test overcorrects and inflates the p-value
+- for paired observations use McNemar's test
+
+#### Pearson's chi-square test [@wikiPearsonChisqTest]
+
+- One application is a test for independence
+    - null hypothesis is that the occurrence of the outcomes for the two groups is equal
+    - E.g. you have two user groups (male and female). With nominal data for each group, whether they use mobile devices not. i
+    - If your data of the two groups came from the same participants (i.e., the data were paired), you should use McNemar's test.
+- if the Expected cell count is low (2x2: any under 5 and NxK: <5 in 80%) go with Fisher's exact test
+    - you can also try to correct with Yates's correction
+
+#### Fisher's exact test [@wikiPearsonChisqTest]
+
+- use Fisher's exact test if your sample size is small.
+    - is better to use than a Chi-square test when cell(s) < 10.
+    - A common rule is 5 or more in all cells of a 2-by-2 table, and 5 or more in 80% of cells in larger tables, but no cells with zero expected count.
+
+#### McNemar's test [@wikiMcNemarsTest]
+
+- statistical test used on paired nominal data.
+- applied to 2x2 contingency tables with a dichotomous trait, with matched pairs of subjects, to determine whether the row and column marginal frequencies are equal
+- example: a researcher attempts to determine if a drug has an effect on a particular disease.
+    - Counts of individuals are given in the table, with the diagnosis (disease: present or absent) before treatment given in the rows, and the diagnosis after treatment in the columns.
+    - The test requires the same subjects to be included in the before-and-after measurements (matched pairs).
 
 ### DLMs
 
@@ -127,7 +197,7 @@ Parameter setting [@west1999obsVar]
 one-step forecast [@west1999generalDLMdef]
 
 1. Posterior for $\boldsymbol\theta_{t-1}$ (for some $\mathbf{m}_{t-1}$, and $\mathbf{C}_{t-1}$):
-   $$ (\boldsymbol\theta_{t-1} | D_{t-1}) \sim \mathsf{N}[\mathbf{m}_{m-1}, \mathbf{C}_{t-1}] $$
+   $$ (\boldsymbol\theta_{t-1} | D_{t-1}) \sim \mathsf{N}[\mathbf{m}_{t-1}, \mathbf{C}_{t-1}] $$
 2. Prior for $\boldsymbol\theta_t$:
    $$ (\boldsymbol\theta_{t} | D_{t-1}) \sim \mathsf{N}[\mathbf{a}_t, \mathbf{R}_{t}] \\
    \mbox{where } \mathbf{a}_t = \mathbf{G}_t\mathbf{m}_{t-1} \mbox{ and } \mathbf{R}_t = \mathbf{G}_tC_{t-1}\mathbf{G}'_t + \mathbf{W}_t$$
@@ -141,8 +211,8 @@ one-step forecast [@west1999generalDLMdef]
 
 #### One-step forecast [@west1999oneStepDlm]
 
-1. Posterior for $\theta_t$:
-   $$ (\theta_{t-1} | D_{t-1}) \sim \mathsf{N}[m_{m-1}, C_{t-1}] \\
+1. Posterior for $\theta_{t-1}$:
+   $$ (\theta_{t-1} | D_{t-1}) \sim \mathsf{N}[m_{t-1}, C_{t-1}] \\
    \mbox{ for some mean } m_{t-1} \mbox{ and variance } C_{t-1}$$
 2. Prior for $\theta_t$:
    $$ (\theta_{t} | D_{t-1}) \sim \mathsf{N}[m_{m-1}, R_{t}] \\
@@ -171,11 +241,121 @@ $\delta$ is often used as notation for the discount factor.
 - $\delta\in[0,1]$ represents the difference in importance between future rewards and present rewards.
 - inverse multiplied by $C$ to make $R$. (GL set-up)
 
+### statistical tests
+
+#### non-parametric
+
+##### Mann-Whitney U test
+
+- aka Mann-Whitney-Wilcoxon (MWW), Wilcoxon rank-sum test, Wilcoxon-Mann-Whitney test
+- nonparametric test
+- null hypothesis: two samples following the same distribution
+- does not require the normal distribution assumption (unlike the t-test)
+    - normal assumption: nearly as efficient as the t-test
+- calculate a U statistic reflecting the difference in rank for the samples
+- paired samples: Wilcoxon signed-rank test
+
+## Frequentist approaches {.tabset .tabset-fade .tabset-pills}
+
 ### Overview
 
-data mining, prediction stuff
+Section for frequentist methods / concepts
 
+### p-values
 
-TODO
+### confidence intervals
+
+A 95% CI means that if an infinite number of samples were taken with CIs, 95% of the CIs would capture the population parameter. [@trafimow2015]
+
+95% CI does not indicate that the parameter of interest has 95% probablity of falling within the interval. [@trafimow2015]
+
+## Bayesian approaches {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Section for bayesian methods / concepts
+
+### Arguments for Bayesian
+
+In comparison to classic frequentist hypothesis testing. [@wagenmakers2007]
+
+NHST (Null hypothesis significance testing) is designed to verify an alternative hypothesis. Never to show any evidence for the validity of the NH.
+
+The p-value
+
+1. is calculated from imaginary data
+2. is based on subjective intentions
+3. does not quantify statistical evidence
+
+suggested solution is to switch from the p-value methodology to a model selection/comparison methodology.
+
+the NH posterior probability is higher than the p-value suggesting that the p-value undersells the NH in NHST.
+
+other big differences between frequentist and bayesian is [@dienes2011]
+
+1. Stopping rules
+2. Planned versus post hoc comparisons
+3. Multiple testing
+
+#### p-value Problem 1: dependence on non-observed data
+
+p-value is obtained from the distribution of a test statistic over hypothetical replications (i.e. the sampling distribution). The p-value is the integral over values of the test statistic that are at least as extreme as the one that is actually observed. (is this true? isn't the more extreme values calculated from a theoritical standpoint?)
+
+it's the dependency on the more extreme values that is seen as hypothetical, non-observed scenarios that is upsetting to a bayesian.
+
+#### p-value Problem 2: dependence on (possibly unknown) subjective intentions
+
+same data may yield quite different p values, depending on the intention with which the experiment was carried out. E.g. do you apply a binomial or negative binomial sampling? The choice likely impacts the p-value.
+
+E.g. If we have 5 out of 6 correct answers, do we count the number of successes out of certain amount of tries (i.e. Binomial) or do we stop at the number of successes reached (neg. binomial)? The p-values will differ (0.1 or 0.03) due to what's more extreme is different depending on the sampling. Bayesians find this absurd.
+
+#### p-value Problem 3: does not quantify statistical evidence
+
+According to Cornfield 1966, for statistical evidence you need to ask yourself about: Same p value, same evidence? (aka the p postulate)
+
+Experiment S finds that p = .032 after 11 participants are tested, and Experiment L finds p = .032 after 98 participants are tested. Do the two experiments provide equally strong evidence against the null hypothesis? If not, which experiment is the more convincing?
+
+A Bayesian analysis strongly suggests that the p postulate is false: When two experiments have different sample sizes but yield the same p value, the experiment with the smallest sample size is the one that provides the strongest evidence against the null hypothesis.
+
+#### Stopping rules
+
+When applying a frequentist approach you need to establish a sample size beforehand. Due to how NH and p-values work, *even if there's no effect, a researcher is guaranteed to obtain a statisticaly significant result if sampling is continued*.
+
+In contrast, BF will approach infinite evidence (if NH is true), as more data is collected.
+
+Bayes inference obeys the likelihood principle, one is allowed to stop or continue sampling at any time, results will stay valid.
+
+#### Planned vs post hoc comparisons
+
+For frequentist inference, formulating the hypothesis before or after data collection is of significance.
+
+This is however not the case for the Bayesian approach using BF since this information is insignificant for the likelihood.
+
+#### Multiple testing
+
+Multiple testing needs to be accounted for in a frequentist setting.
+
+In the corresponding Bayesian setting, it's not the number of tests that are of significance, but rather the accuracy of each hypothesis predicting the observed data.
+
+#### Bayesian solution
+
+don't rely on non-observed data (more extreme values) nor the sampling by selecting a prior distrubution and use the observations to update that distribution (Using bayes rule).
+If evidence points in the direction of the NH then the updated distribution will reflect this and vice-versa for the alternative hypothesis.
+
+Typically you would exchange NHST and p-values with Bayes factor.
+
+### Laplacian assumption [@trafimow2015]
+
+When in the state of ignorance, assign equal probability to each possibility. (problem references: Chihara 1994, Fisher 1973, Glymour 1980)
+
+### NH rejection and missing NH value in CI
+
+In frequentist methods, rejecting NH is synonymous with the NH value not being available in the confidence interval.
+
+The corresponding thing is not true in Bayesian approaches.
+Rejecting the NH and the credible interval containing the NH value are not synonymous.
+Part of the explanation is that you create a model comparison to evaluate the NH.
+
+## TODO
 
 - look up Kalman filtering? seems very standard
