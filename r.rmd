@@ -283,6 +283,51 @@ USArrests$state %>% head(2) %>% dput
 USArrests$state %>% head(2) %>% as.character %>% dput
 ```
 
+## Object system {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+R has a S3 and S4 Object system. S3 is preferred using polymorphism.
+
+### UseMethod
+
+TODO: add example where you pass more arguments
+
+base for `R`'s S3 object system using polymorphism, switching function (function / method dispatch) on the class of the called object.
+
+```{r, "UseMethod"}
+
+asEmpty <- function(object) UseMethod("asEmpty")
+asEmpty.integer <- function(object) integer(0)
+asEmpty.character <- function(object) character(0)
+
+1:3 %>% asEmpty
+letters %>% asEmpty
+
+```
+
+adding custom classes to objects and using polymorphism
+
+```{r}
+
+mkNameFeatures <- function(obj) UseMethod("mkNameFeatures")
+mkNameFeatures.se <- function(names) data.frame(name = names, namesCount = names %>% strsplit(" ") %>% purrr::map_dbl(length))
+mkNameFeatures.ja <- function(names) data.frame(name = names, hasSpace = names %>% grepl(pattern = " ") )
+
+appendClass <- function(obj, cls) {
+  class(obj) %<>% append(cls)
+  obj
+}
+
+jaNames <- c("田中角栄", "杉本 レイ", "上杉謙信") %>% appendClass("ja")
+seNames <- c("Emil Erik Alexis Rehnberg", "stella", "balle AF raggare") %>% appendClass("se")
+
+jaNames %>% mkNameFeatures
+seNames %>% mkNameFeatures
+
+```
+
+
 
 # Standard Libraries {.tabset .tabset-fade .tabset-pills}
 
@@ -787,50 +832,6 @@ unitScale <- function(dta)
         ,scale = dta %>% purrr::map(range, na.rm = TRUE) %>% purrr::map_dbl(diff)
         )
 airquality %>% unitScale %>% summary
-
-```
-
-# Object system {.tabset .tabset-fade .tabset-pills}
-
-### Overview
-
-R has a S3 and S4 Object system. S3 is preferred using polymorphism.
-
-### UseMethod
-
-TODO: add example where you pass more arguments
-
-base for `R`'s S3 object system using polymorphism, switching function (function / method dispatch) on the class of the called object.
-
-```{r, "UseMethod"}
-
-asEmpty <- function(object) UseMethod("asEmpty")
-asEmpty.integer <- function(object) integer(0)
-asEmpty.character <- function(object) character(0)
-
-1:3 %>% asEmpty
-letters %>% asEmpty
-
-```
-
-adding custom classes to objects and using polymorphism
-
-```{r}
-
-mkNameFeatures <- function(obj) UseMethod("mkNameFeatures")
-mkNameFeatures.se <- function(names) data.frame(name = names, namesCount = names %>% strsplit(" ") %>% purrr::map_dbl(length))
-mkNameFeatures.ja <- function(names) data.frame(name = names, hasSpace = names %>% grepl(pattern = " ") )
-
-appendClass <- function(obj, cls) {
-  class(obj) %<>% append(cls)
-  obj
-}
-
-jaNames <- c("田中角栄", "杉本 レイ", "上杉謙信") %>% appendClass("ja")
-seNames <- c("Emil Erik Alexis Rehnberg", "stella", "balle AF raggare") %>% appendClass("se")
-
-jaNames %>% mkNameFeatures
-seNames %>% mkNameFeatures
 
 ```
 
