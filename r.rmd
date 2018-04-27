@@ -283,6 +283,38 @@ USArrests$state %>% head(2) %>% dput
 USArrests$state %>% head(2) %>% as.character %>% dput
 ```
 
+## parse CL args
+
+parsing command line arguments / parameters
+
+- use `#!/usr/bin/env Rscript` on top of the executable file (`tca.r` let's say)
+- call `./tca.r --args a=1 name=\'Billy\'`
+- use the `commandArgs`, `parse` and `eval` functions to read the parameters into your script
+- sometimes if `trailingOnly` is set, `--args` is still in there
+
+```{r "commandArgs"}
+library(magrittr)
+arguments <- c("a=1", "name=\'Billy\'") # commandArgs(trailingOnly = TRUE)
+for(argument in arguments){
+  eval(parse(text = argument))
+}
+```
+
+into a `data.frame`. This works but then all columns are strings
+
+```{r "command line arguments into data.frame"}
+arguments %>% strsplit("=") %>% sapply(function(strings) purrr::set_names(strings[2], strings[1]) )
+```
+
+use `jsonlite` instead by sending in JSON data. E.g. executing:
+`./predict-co2uptake '[{"Type": "Quebec", "Treatment": "nonchilled", "conc": 350}]'`
+on the command line
+
+```{r "command line arguments into data.frame using jsonlite"}
+jsonlite::fromJSON('[{"Type": "Quebec", "Treatment": "nonchilled", "conc": 350}]') %>% str
+```
+
+
 ## Object system {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
@@ -487,37 +519,6 @@ or by some other grouping
 
 ```{r}
 split(airquality, airquality$Month)
-```
-
-### parse CL args
-
-parsing command line arguments / parameters
-
-- use `#!/usr/bin/env Rscript` on top of the executable file (`tca.r` let's say)
-- call `./tca.r --args a=1 name=\'Billy\'`
-- use the `commandArgs`, `parse` and `eval` functions to read the parameters into your script
-- sometimes if `trailingOnly` is set, `--args` is still in there
-
-```{r "commandArgs"}
-library(magrittr)
-arguments <- c("a=1", "name=\'Billy\'") # commandArgs(trailingOnly = TRUE)
-for(argument in arguments){
-  eval(parse(text = argument))
-}
-```
-
-into a `data.frame`. This works but then all columns are strings
-
-```{r "command line arguments into data.frame"}
-arguments %>% strsplit("=") %>% sapply(function(strings) purrr::set_names(strings[2], strings[1]) )
-```
-
-use `jsonlite` instead by sending in JSON data. E.g. executing:
-`./predict-co2uptake '[{"Type": "Quebec", "Treatment": "nonchilled", "conc": 350}]'`
-on the command line
-
-```{r "command line arguments into data.frame using jsonlite"}
-jsonlite::fromJSON('[{"Type": "Quebec", "Treatment": "nonchilled", "conc": 350}]') %>% str
 ```
 
 ### work inside closed data environment
