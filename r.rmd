@@ -831,7 +831,13 @@ seNames %>% mkNameFeatures
 
 ```
 
-# yaml {.tabset .tabset-fade .tabset-pills}
+# Package Usages {.tabset .tabset-fade .tabset-pills}
+
+## Overview
+
+Section for different packages. Giving simple or typical use-cases.
+
+## yaml {.tabset .tabset-fade .tabset-pills}
 
 Overview of the yaml pacakge
 
@@ -846,7 +852,7 @@ yaml::read_yaml(text = "{ name: John Smith, Age: 33 }")
 ```
 
 
-# glue {.tabset .tabset-fade .tabset-pills}
+## glue {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -897,7 +903,7 @@ x <- 1:5
 glue::glue('Values of x: {glue::collapse(glue::backtick(x), sep = ", ", last = " and ")}')
 ```
 
-# devtools {.tabset .tabset-fade .tabset-pills}
+## devtools {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -954,7 +960,7 @@ Run `devtools::use_testthat()` to set-up testing during package development.
 
 Run `devtools::test()` to run the package tests.
 
-# testthat {.tabset .tabset-fade .tabset-pills}
+## testthat {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1050,7 +1056,7 @@ testthat::with_mock(
 )
 ```
 
-# dplyr {.tabset .tabset-fade .tabset-pills}
+## dplyr {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1171,7 +1177,7 @@ b1Level <- "high"
 dts %>% filter_(paste("b1Lvl == ", b1Level %>% asQuoted))
 ```
 
-# pwr {.tabset .tabset-fade .tabset-pills}
+## pwr {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1193,7 +1199,7 @@ Chi-square test power calculations.
 pwr::pwr.chisq.test(w = .5, N = 145, df = 1)
 ```
 
-# rlang {.tabset .tabset-fade .tabset-pills}
+## rlang {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1219,7 +1225,7 @@ mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!sortArg)
 # mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!rlang::quo(sortArg))
 ```
 
-# RSQLServer {.tabset .tabset-fade .tabset-pills}
+## RSQLServer {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1272,7 +1278,7 @@ DW:
     password: *pass
 ```
 
-# tibble {.tabset .tabset-fade .tabset-pills}
+## tibble {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1312,7 +1318,7 @@ tibble_(list( x = ~1:10
              ,y = quote(x * 2)))
 ```
 
-# purrr {.tabset .tabset-fade .tabset-pills}
+## purrr {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1969,7 +1975,7 @@ NA %||% 2
 integer() %||% 2
 ```
 
-# tidyr {.tabset .tabset-fade .tabset-pills}
+## tidyr {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -2015,7 +2021,7 @@ stocks %>%
                 ,price) # name of the numeric column to pivot
 ```
 
-# XLConnect {.tabset .tabset-fade .tabset-pills}
+## XLConnect {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -2044,7 +2050,7 @@ file.remove(wbPath)
 ```
 
 
-# tidytext {.tabset .tabset-fade .tabset-pills}
+## tidytext {.tabset .tabset-fade .tabset-pills}
 
 ```{r "installing tidytext", eval = FALSE}
 
@@ -2088,7 +2094,7 @@ restructure data as *one-token-per-row* instead.
 ```
 
 
-# magrittr {.tabset .tabset-fade .tabset-pills}
+## magrittr {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -2131,7 +2137,7 @@ list(1:3, letters[1:3]) %>% purrr::pmap(.f = zeroPaster)
 1:3 %>% purrr::map2(letters[1:3], zeroPaster)
 ```
 
-# regexes {.tabset .tabset-fade .tabset-pills}
+## regexes {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
