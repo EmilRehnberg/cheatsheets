@@ -4004,7 +4004,13 @@ or a polynomial
 
 ```
 
-# Statistical Tests {.tabset .tabset-fade .tabset-pills}
+# Statistics {.tabset .tabset-fade .tabset-pills}
+
+## Overview
+
+Section for statistics. Distributions, testing etc.
+
+## Statistical Tests {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
