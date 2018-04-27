@@ -3541,14 +3541,17 @@ aq <-
 See hierarchical clustering for base `plot` and `hclust`
 
 ```{r "dendrogram_ggplot"}
+
 library(ggplot2)
 library(ggdendro)
 arrestsHc <- USArrests %>% dist %>% hclust("ave")
 arrestsHc %>% ggdendrogram
 arrestsHc %>% ggdendrogram(rotate = TRUE)
+
 ```
 
 ```{r "hc dendrogram with graphics::plot"}
+
 arrestsHc %>% plot
 arrestsHc %>% rect.hclust(5)
 arrestsHc %>% plot
@@ -3557,11 +3560,13 @@ arrestsHc %>% rect.hclust(h = 40, which = c(2, 6), border = 3:4) # border is for
 arrestsHc %>% plot
 arrestsHc %>% rect.hclust(3)
 arrestsHc %>% rect.hclust(h = 30, which = c(3, 7), border = 3:4)
+
 ```
 
 extracting dendrogram plot data
 
 ```{r "dendrogram data extraction"}
+
 library(ggplot2)
 arrestsDendroDt <- arrestsHc %>% as.dendrogram %>% dendro_data(type = "rectangle")
 ggplot(segment(arrestsDendroDt)) +
@@ -3574,11 +3579,13 @@ ggplot(segment(arrestsHc %>% as.dendrogram %>% dendro_data(type = "triangle"))) 
   geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
   coord_flip() +
   scale_y_reverse(expand = c(.2, 0))
+
 ```
 
 regression tree diagrams
 
 ```{r ""}
+
 library(tree)
 data(cpus, package = "MASS")
 model <- tree(log10(perf) ~ syct + mmin + mmax + cach + chmin + chmax
@@ -3611,9 +3618,11 @@ ggplot() +
   geom_text(data = tree_data$leaf_labels
             ,aes(x = x, y = y, label = label), size = 3, vjust = 1) +
   theme_dendro()
+
 ```
 
 ```{r "trees with rpart"}
+
 library(rpart)
 rpart_data <-
   rpart(Kyphosis ~ Age + Number + Start
@@ -3643,6 +3652,7 @@ ggplot() +
   geom_text(data = co2_rpart_data$leaf_labels
             ,aes(x = x, y = y, label = label), size = 3, vjust = 1) +
   theme_dendro()
+
 ```
 
 ### Facet grid
