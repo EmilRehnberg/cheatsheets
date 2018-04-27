@@ -835,6 +835,478 @@ airquality %>% unitScale %>% summary
 
 ```
 
+# Object Types {.tabset .tabset-fade .tabset-pills}
+
+## Overview
+
+Section for types like lists, data.frame, factors etc.
+
+## Dates {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+section for working with dates
+
+### parsing
+
+parsing dates. `strftime` is a wrapper for `format.POSIXct` and `strptime` for `POSIXct`
+
+```{r date_parsing}
+strptime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") # creates a `POSIXlt POSIXt`
+strftime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") # creates a `character`
+strptime("01:30:00", "%H:%M:%S")
+strptime("20160927", "%Y%m%d")
+strptime(20160927, "%Y%m%d")
+strptime(20160927, "%Y%m%d") %>% weekdays
+as.POSIXct("2011-03-27 01:30:00")
+as.POSIXct("2011-03-27 01:30:00") %>% class
+as.POSIXct("2011-03-27 01:30:00") %>% class
+as.POSIXlt("2011-03-27 01:30:00") %>% unclass %>% unlist
+```
+
+### extracting data
+
+```{r "date data extracting"}
+strptime("20160927", "%Y%m%d") %>% weekdays
+as.POSIXct("2011-03-27 01:30:00") %>% months
+strptime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") %>% format("%H")
+```
+
+### combining date & time
+
+```{r}
+library(magrittr)
+d1 <- as.Date("1970-10-12")
+t1 <- "10:40"
+paste(d1, t1) %>% as.POSIXct
+```
+
+### weeks
+
+```{r}
+today <- Sys.Date()
+format(today, format = "%Y-%W")
+```
+
+## Factors {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+section for working with factors
+
+### generate factor levels
+
+```{r}
+gl(2, 3, labels = c("Control", "Treatment"))
+```
+
+### drop factor levels
+
+Use the `droplevels` function. Returns the full argument object with pruned factor levels.
+
+```{r}
+df <-
+  data.frame(letters=letters[1:5],
+             numbers=seq(1:5))
+levels(df$letters)
+subdf <- df %>% subset(numbers <= 3)
+levels(subdf$letters)
+subdf$letters <- droplevels(subdf$letters)
+levels(subdf$letters)
+```
+
+### Replace NA with value in factor
+
+Replace NA with value in a factor variables.
+
+```{r}
+replaceFactorNAs <- function(fctr, naLevel = "Unknown"){
+  ifelse(fctr %>% is.na, naLevel, fctr %>% as.character) %>%
+    factor(fctr %>% levels %>% append(naLevel))
+}
+```
+
+### getFactors
+
+extract factor columns from data frame.
+
+```{r}
+library(magrittr)
+getFactors <- function(dataFrame){
+  dataFrame %>%
+    names %>%
+    sapply(function(colName){
+             dataFrame %>%
+               getElement(colName) %>%
+               is.factor
+    }) %>%
+    dataFrame[,.]
+}
+exams <-
+  expand.grid(res = c("Y", "N"),
+              score = 1:4,
+              id = LETTERS[1:5])
+exams %>% head %T>% print %>% getFactors
+```
+
+### ordered factors
+
+with ordered / ordinal factors you can filter using less / greater / larger / smaller than.
+
+```{r "ordered factors"}
+mp <- structure(list(pa = c("M 1", "M 2", "M 3")
+                     ,fy = c("FY17.05", "FY17.04", "FY17.03"))
+                , .Names = c("pa", "fy")
+                , row.names = c(NA, -3L)
+                , class = "data.frame")
+mp %<>%
+  dplyr::mutate( pa = pa %>% ordered
+                ,fy = fy %>% as.ordered)
+mp %>% str
+mp %>% dplyr::filter(pa > "M 1")
+```
+
+### transforming factors
+
+```{r}
+library(magrittr)
+levels <- 1:4
+factorVariable <- factor(levels,
+                         labels=levels+10)
+factorVariable %>% as.integer # returns underlying levels
+factorVariable %>% as.character # returns labels
+```
+
+### compact factor
+
+to weed out empty factors
+
+```{r "compact factor"}
+asCompactFactor <- function(fctr) fctr %>% as.character %>% as.factor
+(nonCompactFactor <- factor(c("A", "C", "A"), levels = LETTERS[1:5]))
+nonCompactFactor %>% asCompactFactor
+
+```
+
+### edit factors
+
+alter / remap factor-levels
+
+- use a look-up table
+- `remapFactor` function is MUCH faster for large factors
+- NOTE: the mapping is reversed in the two approaches
+- NOTE: use `as.character` in remapFactor2 to avoid serious bugs
+
+remapFactor code taken from [vignette](https://cran.r-project.org/web/packages/gdata/vignettes/mapLevels.pdf)
+
+```{r}
+(fvar <-
+  gl(n = 3, # number of levels
+     k = 2, # number of replications
+     labels = c("Control", "Treatment1", "Treatment2")))
+
+remapFactor <- function(fctr, fctrMap){ levels(fctr) <- fctrMap ; fctr }
+remapFactor2 <- function(fctr, fctrMap){ fctr %>% as.character %>% fctrMap[.] %>% unname %>% as.factor }
+
+factorLookUpMap <-
+  list(
+        "trmt" = "Treatment1"
+       ,"trmt" = "Treatment2"
+       ,"ctrl" = "Control"
+       )
+fvar %>% remapFactor(factorLookUpMap)
+
+factorLookUpMap2 <-
+  c(
+     "Treatment1" = "trmt"
+    ,"Treatment2" = "trmt"
+    ,"Control"    = "ctrl"
+    )
+fvar %>% remapFactor2(factorLookUpMap2)
+
+```
+
+or use `factor` to reorder factor levels
+
+```{r}
+set.seed(12)
+ist <- InsectSprays$spray %>% sample %>% head(10) %>% as.character
+ist %>% factor(levels = c("F", "D", "E", "A", "B"))
+.Last.value %>% table
+```
+
+or when it's more complicated
+
+```{r}
+c(1, 0, 0, NA, 1) %>%
+  factor(labels = c("N", "Y")) %>%
+  factor(c("N", "Y", "U"))
+```
+
+### rm one level factors
+
+from a data frame you might want to remove columns that are factors with only one level (since there's no variance). (compact factor / sparse factor)
+
+```{r "rmOneLevelFactors"}
+isOneLevelFactor <- function(vctr) {(vctr %>% is.factor) & (vctr %>% levels %>% length %>% equals(1))}
+rmOneLevelFactors <- function(dta)
+  dta %>%
+    purrr::map(function(col) if(col %>% isOneLevelFactor) NULL else col ) %>%
+    compact %>% as.data.frame
+
+data.frame(a = gl(2,2), b = gl(1,4), d = 1:4) %>% rmOneLevelFactors
+
+```
+
+## Data Frames {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+section for working with `data.frame`
+
+### combining
+
+to concatenating / combining / binding data frames
+
+```{r "combining data frames"}
+
+d1 <- data.frame(a = 1, b = 2)
+d2 <- data.frame(b = 1, a = 2)
+rbind(d1, d2) # returns expected combined data.frames, names are intact
+
+```
+
+
+## Lists {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+section for working with lists
+
+### Subsetting
+
+Subset / Select specific elements in a list.
+
+Use single square brackets and use numerical index >.<
+
+TODO: Add Helper for this??
+
+```{r "list select"}
+Harman23.cor[c(2,3)] %>% str
+```
+
+using names to exclude / include list elements
+
+```{r "named list subsetting"}
+include.list <- function(vctr, elements) vctr[vctr %>% names %in% elements]
+exclude.list <- function(vctr, elements) vctr[! vctr %>% names %in% elements]
+l1 <-
+  list(
+     qsec = 2
+    ,mpg = 3
+    ,disp = 4
+    ,vs = 5
+    ,wt = 6
+    ,am = 7
+   )
+
+l1 %>% include(c("qsec", "vs", "am")) %>% str
+l1 %>% exclude(c("qsec", "vs", "am")) %>% str
+```
+
+### combining
+
+adding / appending / pushing / concatenating lists can be done with `append`
+
+```{r "combing lists"}
+
+la <- list(a = 1:2, rr = runif(4))
+lb <- list(b = 3)
+append(la, lb)
+
+```
+
+same with tibble
+
+```{r}
+
+library(tibble)
+la <- lst(a = 1:2, rr = runif(4))
+lb <- lst(b = 3)
+append(la, lb)
+
+```
+
+lists with overlapping object names will still merge (not overwrite) and extraction gets iffy
+
+```{r "combining list gotcha"}
+
+la <- list(a = 1:2, rr = runif(4))
+lr <- list(rr = 3)
+(ll <- append(la, lr))
+ll[["rr"]] # grabs the first object with corresponding name. use index to access the later "rr"
+
+```
+
+tibble is consistent with list
+
+```{r}
+
+la <- tibble::lst(a = 1:2, rr = runif(4))
+lr <- tibble::lst(rr = 3)
+(ll <- append(la, lr))
+ll[["rr"]]
+
+purrr::update_list(la, !!! lr) # use purrr::update_list with splicing !!! / UQS()
+
+```
+
+
+
+### multi-layer lists
+
+build larger lists and iterate with them
+
+```{r "multi-layer lists"}
+
+library(magrittr)
+dates <-
+  list( day1 = "2015-12-12"
+       ,day2 = "2016-07-12"
+       ,day3 = "2014-01-03") %>%
+    sapply(as.Date, simplify = FALSE)
+wkdays <- dates %>% sapply(weekdays, simplify = FALSE)
+mnths <- dates %>% sapply(months, simplify = FALSE)
+
+```
+
+How do we combine these in one named list?
+
+```{r}
+
+mapply(FUN = function(dta, name){
+         list( dta = dta
+              ,weekday = wkdays[[name]]
+              ,month = mnths[[name]]
+              )
+       }
+  ,dates
+  ,names(dates)
+  ,SIMPLIFY = FALSE
+  )
+
+```
+
+or even better
+
+```{r}
+
+dd <- dates %>% sapply(function(dta){list(date = dta)}, simplify = FALSE)
+dd %>%
+  sapply(function(lst){
+           append(lst, list(weekday = lst$date %>% weekdays))
+          }, simplify = FALSE)
+
+```
+
+or more succinct if it makes sense
+
+```{r}
+
+dates %>%
+  sapply(function(dta){
+           list( date = dta
+                ,weekday = dta %>% weekdays)
+          }, simplify = FALSE)
+
+```
+
+use tibble and purrr
+
+```{r "multi-layers with purrr and tibble"}
+library(tibble)
+library(purrr)
+dates %>%
+  as.tibble %>%
+  map(function(date){
+        lst( date = date
+            ,weekday = date %>% weekdays)
+       }) # %>% as.tibble
+
+```
+
+multiple arguments to map does NOT work as expected
+
+```{r}
+
+dates %>%
+  as.tibble %>%
+  map(dates %>% names
+      ,.f = function(date, dayLabel){
+        lst( date = date
+            ,month = date %>% months
+            ,label = dayLabel)
+      })
+
+```
+
+mix nested lists and vectors
+
+```{r}
+datesList <-
+  dates %>%
+    map(function(date){
+      lst( date = date
+          ,meta = lst( weekday = date %>% weekdays)
+         )
+     })
+
+datesList %>% map(function(ddt){
+    ddt$meta %<>% append(list(month = ddt$date %>% months))
+    ddt
+   })
+
+```
+
+### iteration and names
+
+preserving names in the returning list
+
+```{r "lists and preserving names"}
+library(magrittr)
+dayList <- list(Day1 = 12, Day2 = 34, `Day 3` = 23)
+sapply(dayList, sqrt, simplify = FALSE)
+```
+
+accessing list item name inside function
+
+```{r "list item access from inside function"}
+
+dayPrinter <- function(dta, listName) paste0(listName, ": ", dta)
+Map(dayPrinter
+    ,dayList
+    ,names(dayList))
+
+```
+
+or with `mapply`, since `Map` is directly using `mapply`
+
+```{r}
+
+mapply(FUN = dayPrinter, dayList, names(dayList), SIMPLIFY = FALSE)
+
+```
+
+use a function to remove the boiler plate
+
+```{r}
+
+mapplyWithNames <- function(lst, FUN) mapply(FUN = FUN, lst, names(lst), SIMPLIFY = FALSE)
+dayList %>% mapplyWithNames(dayPrinter)
+
+```
+
+
 # Package Usages {.tabset .tabset-fade .tabset-pills}
 
 ## Overview
@@ -2882,471 +3354,6 @@ library(dplyr)
 c(3, 6, 12) %>%
   lapply(function(day){ airquality %>% filter(Day == day) }) %>%
   Reduce(rbind, .)
-```
-
-# Dates {.tabset .tabset-fade .tabset-pills}
-
-### Overview
-
-section for working with dates
-
-### parsing
-
-parsing dates. `strftime` is a wrapper for `format.POSIXct` and `strptime` for `POSIXct`
-
-```{r date_parsing}
-strptime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") # creates a `POSIXlt POSIXt`
-strftime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") # creates a `character`
-strptime("01:30:00", "%H:%M:%S")
-strptime("20160927", "%Y%m%d")
-strptime(20160927, "%Y%m%d")
-strptime(20160927, "%Y%m%d") %>% weekdays
-as.POSIXct("2011-03-27 01:30:00")
-as.POSIXct("2011-03-27 01:30:00") %>% class
-as.POSIXct("2011-03-27 01:30:00") %>% class
-as.POSIXlt("2011-03-27 01:30:00") %>% unclass %>% unlist
-```
-
-### extracting data
-
-```{r "date data extracting"}
-strptime("20160927", "%Y%m%d") %>% weekdays
-as.POSIXct("2011-03-27 01:30:00") %>% months
-strptime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") %>% format("%H")
-```
-
-### combining date & time
-
-```{r}
-library(magrittr)
-d1 <- as.Date("1970-10-12")
-t1 <- "10:40"
-paste(d1, t1) %>% as.POSIXct
-```
-
-### weeks
-
-```{r}
-today <- Sys.Date()
-format(today, format = "%Y-%W")
-```
-
-# Factors {.tabset .tabset-fade .tabset-pills}
-
-### Overview
-
-section for working with factors
-
-### generate factor levels
-
-```{r}
-gl(2, 3, labels = c("Control", "Treatment"))
-```
-
-### drop factor levels
-
-Use the `droplevels` function. Returns the full argument object with pruned factor levels.
-
-```{r}
-df <-
-  data.frame(letters=letters[1:5],
-             numbers=seq(1:5))
-levels(df$letters)
-subdf <- df %>% subset(numbers <= 3)
-levels(subdf$letters)
-subdf$letters <- droplevels(subdf$letters)
-levels(subdf$letters)
-```
-
-### Replace NA with value in factor
-
-Replace NA with value in a factor variables.
-
-```{r}
-replaceFactorNAs <- function(fctr, naLevel = "Unknown"){
-  ifelse(fctr %>% is.na, naLevel, fctr %>% as.character) %>%
-    factor(fctr %>% levels %>% append(naLevel))
-}
-```
-
-### getFactors
-
-extract factor columns from data frame.
-
-```{r}
-library(magrittr)
-getFactors <- function(dataFrame){
-  dataFrame %>%
-    names %>%
-    sapply(function(colName){
-             dataFrame %>%
-               getElement(colName) %>%
-               is.factor
-    }) %>%
-    dataFrame[,.]
-}
-exams <-
-  expand.grid(res = c("Y", "N"),
-              score = 1:4,
-              id = LETTERS[1:5])
-exams %>% head %T>% print %>% getFactors
-```
-
-### ordered factors
-
-with ordered / ordinal factors you can filter using less / greater / larger / smaller than.
-
-```{r "ordered factors"}
-mp <- structure(list(pa = c("M 1", "M 2", "M 3")
-                     ,fy = c("FY17.05", "FY17.04", "FY17.03"))
-                , .Names = c("pa", "fy")
-                , row.names = c(NA, -3L)
-                , class = "data.frame")
-mp %<>%
-  dplyr::mutate( pa = pa %>% ordered
-                ,fy = fy %>% as.ordered)
-mp %>% str
-mp %>% dplyr::filter(pa > "M 1")
-```
-
-### transforming factors
-
-```{r}
-library(magrittr)
-levels <- 1:4
-factorVariable <- factor(levels,
-                         labels=levels+10)
-factorVariable %>% as.integer # returns underlying levels
-factorVariable %>% as.character # returns labels
-```
-
-### compact factor
-
-to weed out empty factors
-
-```{r "compact factor"}
-asCompactFactor <- function(fctr) fctr %>% as.character %>% as.factor
-(nonCompactFactor <- factor(c("A", "C", "A"), levels = LETTERS[1:5]))
-nonCompactFactor %>% asCompactFactor
-
-```
-
-### edit factors
-
-alter / remap factor-levels
-
-- use a look-up table
-- `remapFactor` function is MUCH faster for large factors
-- NOTE: the mapping is reversed in the two approaches
-- NOTE: use `as.character` in remapFactor2 to avoid serious bugs
-
-remapFactor code taken from [vignette](https://cran.r-project.org/web/packages/gdata/vignettes/mapLevels.pdf)
-
-```{r}
-(fvar <-
-  gl(n = 3, # number of levels
-     k = 2, # number of replications
-     labels = c("Control", "Treatment1", "Treatment2")))
-
-remapFactor <- function(fctr, fctrMap){ levels(fctr) <- fctrMap ; fctr }
-remapFactor2 <- function(fctr, fctrMap){ fctr %>% as.character %>% fctrMap[.] %>% unname %>% as.factor }
-
-factorLookUpMap <-
-  list(
-        "trmt" = "Treatment1"
-       ,"trmt" = "Treatment2"
-       ,"ctrl" = "Control"
-       )
-fvar %>% remapFactor(factorLookUpMap)
-
-factorLookUpMap2 <-
-  c(
-     "Treatment1" = "trmt"
-    ,"Treatment2" = "trmt"
-    ,"Control"    = "ctrl"
-    )
-fvar %>% remapFactor2(factorLookUpMap2)
-
-```
-
-or use `factor` to reorder factor levels
-
-```{r}
-set.seed(12)
-ist <- InsectSprays$spray %>% sample %>% head(10) %>% as.character
-ist %>% factor(levels = c("F", "D", "E", "A", "B"))
-.Last.value %>% table
-```
-
-or when it's more complicated
-
-```{r}
-c(1, 0, 0, NA, 1) %>%
-  factor(labels = c("N", "Y")) %>%
-  factor(c("N", "Y", "U"))
-```
-
-### rm one level factors
-
-from a data frame you might want to remove columns that are factors with only one level (since there's no variance). (compact factor / sparse factor)
-
-```{r "rmOneLevelFactors"}
-isOneLevelFactor <- function(vctr) {(vctr %>% is.factor) & (vctr %>% levels %>% length %>% equals(1))}
-rmOneLevelFactors <- function(dta)
-  dta %>%
-    purrr::map(function(col) if(col %>% isOneLevelFactor) NULL else col ) %>%
-    compact %>% as.data.frame
-
-data.frame(a = gl(2,2), b = gl(1,4), d = 1:4) %>% rmOneLevelFactors
-
-```
-
-# Data Frames {.tabset .tabset-fade .tabset-pills}
-
-### Overview
-
-section for working with `data.frame`
-
-### combining
-
-to concatenating / combining / binding data frames
-
-```{r "combining data frames"}
-
-d1 <- data.frame(a = 1, b = 2)
-d2 <- data.frame(b = 1, a = 2)
-rbind(d1, d2) # returns expected combined data.frames, names are intact
-
-```
-
-
-# Lists {.tabset .tabset-fade .tabset-pills}
-
-### Overview
-
-section for working with lists
-
-### Subsetting
-
-Subset / Select specific elements in a list.
-
-Use single square brackets and use numerical index >.<
-
-TODO: Add Helper for this??
-
-```{r "list select"}
-Harman23.cor[c(2,3)] %>% str
-```
-
-using names to exclude / include list elements
-
-```{r "named list subsetting"}
-include.list <- function(vctr, elements) vctr[vctr %>% names %in% elements]
-exclude.list <- function(vctr, elements) vctr[! vctr %>% names %in% elements]
-l1 <-
-  list(
-     qsec = 2
-    ,mpg = 3
-    ,disp = 4
-    ,vs = 5
-    ,wt = 6
-    ,am = 7
-   )
-
-l1 %>% include(c("qsec", "vs", "am")) %>% str
-l1 %>% exclude(c("qsec", "vs", "am")) %>% str
-```
-
-### combining
-
-adding / appending / pushing / concatenating lists can be done with `append`
-
-```{r "combing lists"}
-
-la <- list(a = 1:2, rr = runif(4))
-lb <- list(b = 3)
-append(la, lb)
-
-```
-
-same with tibble
-
-```{r}
-
-library(tibble)
-la <- lst(a = 1:2, rr = runif(4))
-lb <- lst(b = 3)
-append(la, lb)
-
-```
-
-lists with overlapping object names will still merge (not overwrite) and extraction gets iffy
-
-```{r "combining list gotcha"}
-
-la <- list(a = 1:2, rr = runif(4))
-lr <- list(rr = 3)
-(ll <- append(la, lr))
-ll[["rr"]] # grabs the first object with corresponding name. use index to access the later "rr"
-
-```
-
-tibble is consistent with list
-
-```{r}
-
-la <- tibble::lst(a = 1:2, rr = runif(4))
-lr <- tibble::lst(rr = 3)
-(ll <- append(la, lr))
-ll[["rr"]]
-
-purrr::update_list(la, !!! lr) # use purrr::update_list with splicing !!! / UQS()
-
-```
-
-
-
-### multi-layer lists
-
-build larger lists and iterate with them
-
-```{r "multi-layer lists"}
-
-library(magrittr)
-dates <-
-  list( day1 = "2015-12-12"
-       ,day2 = "2016-07-12"
-       ,day3 = "2014-01-03") %>%
-    sapply(as.Date, simplify = FALSE)
-wkdays <- dates %>% sapply(weekdays, simplify = FALSE)
-mnths <- dates %>% sapply(months, simplify = FALSE)
-
-```
-
-How do we combine these in one named list?
-
-```{r}
-
-mapply(FUN = function(dta, name){
-         list( dta = dta
-              ,weekday = wkdays[[name]]
-              ,month = mnths[[name]]
-              )
-       }
-  ,dates
-  ,names(dates)
-  ,SIMPLIFY = FALSE
-  )
-
-```
-
-or even better
-
-```{r}
-
-dd <- dates %>% sapply(function(dta){list(date = dta)}, simplify = FALSE)
-dd %>%
-  sapply(function(lst){
-           append(lst, list(weekday = lst$date %>% weekdays))
-          }, simplify = FALSE)
-
-```
-
-or more succinct if it makes sense
-
-```{r}
-
-dates %>%
-  sapply(function(dta){
-           list( date = dta
-                ,weekday = dta %>% weekdays)
-          }, simplify = FALSE)
-
-```
-
-use tibble and purrr
-
-```{r "multi-layers with purrr and tibble"}
-library(tibble)
-library(purrr)
-dates %>%
-  as.tibble %>%
-  map(function(date){
-        lst( date = date
-            ,weekday = date %>% weekdays)
-       }) # %>% as.tibble
-
-```
-
-multiple arguments to map does NOT work as expected
-
-```{r}
-
-dates %>%
-  as.tibble %>%
-  map(dates %>% names
-      ,.f = function(date, dayLabel){
-        lst( date = date
-            ,month = date %>% months
-            ,label = dayLabel)
-      })
-
-```
-
-mix nested lists and vectors
-
-```{r}
-datesList <-
-  dates %>%
-    map(function(date){
-      lst( date = date
-          ,meta = lst( weekday = date %>% weekdays)
-         )
-     })
-
-datesList %>% map(function(ddt){
-    ddt$meta %<>% append(list(month = ddt$date %>% months))
-    ddt
-   })
-
-```
-
-### iteration and names
-
-preserving names in the returning list
-
-```{r "lists and preserving names"}
-library(magrittr)
-dayList <- list(Day1 = 12, Day2 = 34, `Day 3` = 23)
-sapply(dayList, sqrt, simplify = FALSE)
-```
-
-accessing list item name inside function
-
-```{r "list item access from inside function"}
-
-dayPrinter <- function(dta, listName) paste0(listName, ": ", dta)
-Map(dayPrinter
-    ,dayList
-    ,names(dayList))
-
-```
-
-or with `mapply`, since `Map` is directly using `mapply`
-
-```{r}
-
-mapply(FUN = dayPrinter, dayList, names(dayList), SIMPLIFY = FALSE)
-
-```
-
-use a function to remove the boiler plate
-
-```{r}
-
-mapplyWithNames <- function(lst, FUN) mapply(FUN = FUN, lst, names(lst), SIMPLIFY = FALSE)
-dayList %>% mapplyWithNames(dayPrinter)
-
 ```
 
 # Comparing objects {.tabset .tabset-fade .tabset-pills}
