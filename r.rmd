@@ -913,6 +913,8 @@ similar to ruby's `compact`.
 
 library(magrittr)
 compact <- function(object) { UseMethod("compact") }
+compact.default <- function(obj) obj[which(!is.na(obj))]
+compact.character <- function(obj) obj[which(obj != "")] %>% compact.default
 compact.list <- function(lst){
   lst[lapply(lst,
              function(elm){
@@ -2526,6 +2528,7 @@ list( a = 1
      ) %>% (purrr::compact)
 
 c(1, NULL, 3, NA, 5) %>% compact
+c(1, NULL, 3, NA, 5) %>% purrr::compact()
 ```
 
 ### conditional map
