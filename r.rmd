@@ -9,6 +9,7 @@ output:
   pdf_document:
     highlight: zenburn
   html_document:
+    toc: TRUE
     toc_float: TRUE
     css: styles.css
 ---
@@ -18,12 +19,15 @@ options(width = 200)
 ```
 
 ```{r echo=FALSE, eval=FALSE}
-require(rmarkdown); require(shiny)
+
+library(rmarkdown); require(shiny)
 rmdFilePath <- "r.rmd"
 allexamples <- FALSE
 rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
 
 # TODO
+# - try out Bundler for R -- https://github.com/robertzk/lockbox
+
 # From Chase code:
 # - dealing with Reduce and row.names (use row.names = NULL in data.frame)
 # - use factors to get all the counts you want in a table
@@ -32,7 +36,9 @@ rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
 ```
 
 ```{r, eval=FALSE, echo = FALSE}
+
 devtools::install_github('cran/colorout')
+
 ```
 
 ```{r echo=FALSE, message=FALSE}
@@ -49,17 +55,17 @@ include <- function(obj, elms) UseMethod("include")
 exclude <- function(obj, elms) UseMethod("exclude")
 ```
 
-## 目的
+# 目的
 
 cheatsheet for R. it's a place to dump typical annotated R-code.
 
-## Data {.tabset .tabset-fade .tabset-pills}
+# Datasets {.tabset .tabset-fade .tabset-pills}
 
-### Overview
+## Overview
 
 `R` has several open datasets
 
-### numerical
+## numerical
 
 ```{r}
 library(magrittr)
@@ -68,7 +74,7 @@ mtcars %>% str
 USArrests %>% str
 ```
 
-### Time-series
+## Time-series
 
 ```{r}
 AirPassengers %>% str
@@ -76,7 +82,7 @@ Nile %>% str
 freeny %>% str # with numerical variables also!
 ```
 
-### factors
+## factors
 
 ```{r}
 CO2 %>% str
@@ -88,15 +94,18 @@ warpbreaks %>% str
 # library(randomForest)
 # data(imports85)
 # imports85 %>% str # factors & ord.factor
+
+data(quine, package = "MASS")
+quine %>% str
 ```
 
-### lists
+## lists
 
 ```{r}
 Harman23.cor %>% str
 ```
 
-### tables
+## tables
 
 multidimensional tables!
 
@@ -104,7 +113,7 @@ multidimensional tables!
 Titanic %>% str
 ```
 
-### Survival data suitable data
+## Survival data suitable data
 
 ```{r}
 data("GBSG2", package = "TH.data")
@@ -112,11 +121,43 @@ GBSG2 %>% str
 with(GBSG2, { survival::Surv(time, cens) }) %>% head(10)
 ```
 
-## Standard Libraries {.tabset .tabset-fade .tabset-pills}
+# Standard Libraries {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
 Looking at functions from e.g. `base` and `stats` packages that are loaded by default R.
+
+### Control Flow
+
+E.g. if / else statements
+
+```{r "control flow, all the below can be parsed"}
+
+if(1 == 2)
+  print("1 == 2") else
+if(2 == 2)
+  print("2 == 2") else
+  print("ALL FALSE")
+
+if(1 == 2) {
+  print("1 == 2")
+} else if(2 == 2) {
+    print("2 == 2")
+  } else {
+    print("ALL FALSE")
+  }
+
+if(1 == 2) {
+  print("1 == 2")
+} else {
+  if(2 == 2) {
+    print("2 == 2")
+  } else {
+    print("ALL FALSE")
+  }
+}
+
+```
 
 ### Allocation
 
@@ -215,6 +256,17 @@ extract the second argument
 elTrail4 <- function(...) ..2
 ```
 
+### quantiles
+
+quantiles for different probabilities, use `stats:quantile`
+
+```{r "quantile"}
+randomNormals <- rnorm(1001)
+randomNormals %>% quantile
+randomNormals %>% quantile(.4)
+randomNormals %>% quantile(probs = c(.1, .5, 1, 2, 5, 10, 50, NA)/ 100)
+```
+
 ### replications
 
 replicate elements of vectors and lists
@@ -278,7 +330,7 @@ c(3, 7, 15, 1, 292) %>%
 
 `base::switch`
 
-pattern matching in R
+exact pattern matching in R
 
 ```{r}
 centre <- function(x, type) {
@@ -297,7 +349,7 @@ centre(x, "trimmed")
 
 e.g. split a `data.frame`, rows / observations to list. NOTE: second argument is a "group" e.g. `1:10`. If you in this case have a data frame with ten rows, each row will be in an entry in the returned list.
 
-```{r}
+```{r "listify observations to iterate over rows"}
 data.frame(a = 1:10
            ,b = 11:20
            ,c = 51:60) %>%
@@ -312,7 +364,7 @@ split(airquality, airquality$Month)
 
 ### dump object to executable R code
 
-`dput` is your friend
+`dput` is your friend. NOTE: not suitable for S4 objects. try `writeRDS` or `save` for that.
 
 there's some gotchas though. When you're dumping a factor - the output might end up crazy long. Use `as.character` to get what you're looking for.
 
@@ -331,12 +383,28 @@ parsing command line arguments / parameters
 - call `./tca.r --args a=1 name=\'Billy\'`
 - use the `commandArgs`, `parse` and `eval` functions to read the parameters into your script
 
-```{r}
+```{r "commandArgs"}
 library(magrittr)
+# sometimes if trailingOnly is set, --args is still in there
 arguments <- c("a=1", "name=\'Billy\'") # commandArgs(trailingOnly = TRUE)
 for(argument in arguments){
   eval(parse(text = argument))
 }
+```
+
+into a `data.frame`
+
+```{r "command line arguments into data.frame"}
+# this works but then all columns are strings
+arguments %>% strsplit("=") %>% sapply(function(strings) purrr::set_names(strings[2], strings[1]) )
+```
+
+use `jsonlite` instead by sending in JSON data. E.g. executing:
+`./predict-co2uptake '[{"Type": "Quebec", "Treatment": "nonchilled", "conc": 350}]'`
+on the command line
+
+```{r "command line arguments into data.frame using jsonlite"}
+jsonlite::fromJSON('[{"Type": "Quebec", "Treatment": "nonchilled", "conc": 350}]') %>% str
 ```
 
 ### work inside closed data environment
@@ -562,6 +630,31 @@ or less stable
 sprintf("%02s", c("10", "8", "12"))
 ```
 
+case with hours and minutes, similar to a clock
+
+```{r "sprintf clock"}
+sprintf("%02s:%02s", 0:5, 15)
+sprintf("%02s:%02s", 0:5, c(5,25,55)) # not expected
+sprintf("%02s:%02s", rep(0:5, each = 3), c(5,25,55)) # expected
+
+minutesAsClock <-
+  function(minutes)
+    sprintf( "%02s:%02s"
+            ,minutes %>% magrittr::divide_by_int(60)
+            ,minutes %>% magrittr::mod(60)) # modulo `%%`
+(0:12*60+40) %>% minutesAsClock
+```
+
+Windows
+
+```{r "sprintf on windows"}
+
+sprintf("%02s", c("10", "8", "12")) # doesn't return what you'd expect on windows >.<
+# sprintf("%02d", c("10", "8", "12")) # however this does! using `d`
+# not sure it works as intended on Unix systems though
+
+```
+
 ### substr
 
 can extract characters based on position
@@ -610,7 +703,7 @@ use `tryCatch`
 
 with error handler
 
-```{r echo = TRUE}
+```{r "error / exception handling", echo = TRUE}
 library(magrittr)
 myError <- simpleError("エッラー！")
 
@@ -651,7 +744,102 @@ you can also use the `tools` package. but `pskill` does not returns a 0 exit sta
 # tools::pskill(Sys.getpid(), tools::SIGINT)
 ```
 
-## glue {.tabset .tabset-fade .tabset-pills}
+### commandArgs
+
+TODO: add section
+
+### scale
+
+for normalizing / standardizing variables in `data.frame`
+
+`scale` takes three arguments, the data, center and scale.
+
+- `center` what you subtract from the values (unless set to `FALSE`). Default is the mean of the column in question.
+- `scale` is the demoninator (unless set to `FALSE`). Default is the standard deviation.
+
+```{r "scale function"}
+
+airquality %>% summary
+
+airquality %>% scale %>% summary # NOTE: the means and symmetrics between min/max
+
+```
+
+function to scale columns to `[0,1]` unit range
+
+TODO: add scale function to go between `[-1,1]`
+
+```{r}
+
+unitScale <- function(dta)
+  scale(dta
+        ,center = dta %>% purrr::map_dbl(min, na.rm = TRUE)
+        ,scale = dta %>% purrr::map(range, na.rm = TRUE) %>% purrr::map_dbl(diff)
+        )
+airquality %>% unitScale %>% summary
+
+```
+
+# Object system {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+R has a S3 and S4 Object system. S3 is preferred using polymorphism.
+
+### UseMethod
+
+TODO: add example where you pass more arguments
+
+base for `R`'s S3 object system using polymorphism, switching function (function / method dispatch) on the class of the called object.
+
+```{r, "UseMethod"}
+
+asEmpty <- function(object) UseMethod("asEmpty")
+asEmpty.integer <- function(object) integer(0)
+asEmpty.character <- function(object) character(0)
+
+1:3 %>% asEmpty
+letters %>% asEmpty
+
+```
+
+adding custom classes to objects and using polymorphism
+
+```{r}
+
+mkNameFeatures <- function(obj) UseMethod("mkNameFeatures")
+mkNameFeatures.se <- function(names) data.frame(name = names, namesCount = names %>% strsplit(" ") %>% purrr::map_dbl(length))
+mkNameFeatures.ja <- function(names) data.frame(name = names, hasSpace = names %>% grepl(pattern = " ") )
+
+appendClass <- function(obj, cls) {
+  class(obj) %<>% append(cls)
+  obj
+}
+
+jaNames <- c("田中角栄", "杉本 レイ", "上杉謙信") %>% appendClass("ja")
+seNames <- c("Emil Erik Alexis Rehnberg", "stella", "balle AF raggare") %>% appendClass("se")
+
+jaNames %>% mkNameFeatures
+seNames %>% mkNameFeatures
+
+```
+
+# yaml {.tabset .tabset-fade .tabset-pills}
+
+Overview of the yaml pacakge
+
+### Usage
+
+Very useful for config files e.g. with credentials. The default argument to `read_yaml` is a file path to yaml.
+
+```{r }
+
+yaml::read_yaml(text = "{ name: John Smith, Age: 33 }")
+
+```
+
+
+# glue {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -702,7 +890,7 @@ x <- 1:5
 glue::glue('Values of x: {glue::collapse(glue::backtick(x), sep = ", ", last = " and ")}')
 ```
 
-## devtools {.tabset .tabset-fade .tabset-pills}
+# devtools {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -715,6 +903,10 @@ install packages from github
 ```{r "devtools::install_github", eval = FALSE}
 devtools::install_github("cran/purrr")
 devtools::install_github("hadley/stringr")
+devtools::install_github("rstudio/rmarkdown")
+devtools::install_github("rstudio/rmarkdown", ref = '00b58f6') # v1.5
+devtools::install_github(c("cran/cli", "cran/utf8", "cran/pillar", "cran/tibble"))
+devtools::install_github("rstudio/rmarkdown", ref = '79a741b') # v1.1
 ```
 
 ### create
@@ -755,7 +947,7 @@ Run `devtools::use_testthat()` to set-up testing during package development.
 
 Run `devtools::test()` to run the package tests.
 
-## testthat {.tabset .tabset-fade .tabset-pills}
+# testthat {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -851,7 +1043,7 @@ testthat::with_mock(
 )
 ```
 
-## dplyr {.tabset .tabset-fade .tabset-pills}
+# dplyr {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -972,7 +1164,29 @@ b1Level <- "high"
 dts %>% filter_(paste("b1Lvl == ", b1Level %>% asQuoted))
 ```
 
-## rlang {.tabset .tabset-fade .tabset-pills}
+# pwr {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Overview for the `pwr` package, package for calculating statistical power.
+
+### pwr.chisq.test
+
+Chi-square test power calculations.
+
+```{r "chi-square test power"}
+# pwr::pwr.chisq.test(
+#   w = NULL,  # Effect size - 0.1, 0.3, and 0.5 represent small, medium, and large effect sizes respectively
+#   N = NULL,  # Sample size
+#   df = NULL, # degrees of freedom
+#   sig.level = 0.05,
+#  power = NULL
+#   )
+
+pwr::pwr.chisq.test(w = .5, N = 145, df = 1)
+```
+
+# rlang {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -998,7 +1212,7 @@ mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!sortArg)
 # mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!rlang::quo(sortArg))
 ```
 
-## RSQLServer {.tabset .tabset-fade .tabset-pills}
+# RSQLServer {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1051,7 +1265,7 @@ DW:
     password: *pass
 ```
 
-## tibble {.tabset .tabset-fade .tabset-pills}
+# tibble {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1091,7 +1305,7 @@ tibble_(list( x = ~1:10
              ,y = quote(x * 2)))
 ```
 
-## purrr {.tabset .tabset-fade .tabset-pills}
+# purrr {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1113,6 +1327,17 @@ mtcars %>%
   map(~ lm(mpg ~ wt, data = .)) %>%
   map(summary) %>%
   map_dbl("r.squared")
+```
+
+```{r "two level split, 2nd split only on half"}
+dff <-
+  data.frame(F1 = gl(2,3, labels = c("a", "b"))
+             ,F2 = gl(3,2, labels = LETTERS[1:3])
+             ,r1 = rnorm(6)
+             )
+stratDff <- dff %>% split(.$F1)
+stratDff$b %<>% split(.$F2)
+
 ```
 
 ### map
@@ -1187,8 +1412,10 @@ similar to `base::Reduce`. except the argument order makes sense :D
 rerun some code and `n` times and output the result in a list of length `n`
 
 ```{r "purrr::rerun"}
+
 3 %>% rerun(rnorm(5))
 2 %>% rerun(nrm = rnorm(3), unif = runif(3))
+
 ```
 
 ### dealing with failure
@@ -1236,6 +1463,7 @@ function for appending to a list, or `splicing` all arguments into a list.
 probably `update_list` is preferred though due to the edge-case shown below
 
 ```{r}
+library(purrr)
 # want to an arg3 to inputs
 inputs <- list(arg1 = "a", arg2 = "b")
 
@@ -1260,14 +1488,18 @@ inputs
 
 ### split/order/sort by list components
 
-```{r "purrr::split_by"}
+DEPRECATED see [github release](https://github.com/tidyverse/purrr/tree/v0.2.3)
+
+```{r "purrr::split_by", eval = FALSE}
+
 (l1 <- transpose(list(x = sample(4), y = letters[1:4])))
-l1 %>% order_by("x")
+l1 %>% order_by("x") # strings can't be used anymore
 l1 %>% sort_by("x")
 
 (l2 <- rerun(5, g = sample(2, 1), y = rdunif(5, 10)))
 l2 %>% split_by("g") %>% str()
 l2 %>% split_by("g") %>% map(. %>% map("y"))
+
 ```
 
 ### transpose
@@ -1299,20 +1531,26 @@ loggedList %>% transpose %>% str
 modification of a list. similar to `splice` but can overwrite elements with same name.
 
 ```{r "purrr::update_list"}
+
 inputs <- list(arg1 = "a", arg2 = "b")
-update_list(inputs, arg2 = c("c1", "c2")) %>% str()
+purrr::update_list(inputs, arg2 = c("c1", "c2")) %>% str()
 # instead of using splice
 splice(inputs, arg2 = c("c1", "c2")) %>% str()
 
-update_list(inputs, arg3 = c("c1", "c2")) %>% str()
+purrr::update_list(inputs, arg3 = c("c1", "c2")) %>% str()
 
+SpecialArguments <- list(arg1 = c("c1", "c2"))
 # make it a deeper list
-update_list(inputs, SpecialArguments = list(arg1 = c("c1", "c2"))) %>% str
+purrr::update_list(inputs, SpecialArguments = SpecialArguments) %>% str
+# update list contents with overwrites using splicing !!! or UQS()
+purrr::update_list(inputs, !!! SpecialArguments) %>% str
 
 # if you add a list to list though use good old append
 spArgList <- list(specialArgs = c("c2", "c3"))
-inputs %>% update_list(spArgList) # will spit out inputs
+# below broke
+# inputs %>% purrr::update_list(spArgList) # will spit out inputs
 inputs %>% append(spArgList)
+
 ```
 
 ### when
@@ -1430,7 +1668,15 @@ rep(10, 10) %>%
 x %>% keep("a")
 x %>% discard("a")
 
+# filter list on is.integer
+list(a = 1:3
+     ,b = gl(4,3)
+     ,d = integer()
+     ,e = letters
+     ) %>% purrr::keep(is.integer)
+
 # compact keeps all non-NULL and empty items
+
 list( a = 1
      ,b = NULL
      ,c = FALSE
@@ -1439,7 +1685,7 @@ list( a = 1
      ,f = character()
      ,g = list(NULL)
      ,h = NA
-     ) %>% compact
+     ) %>% (purrr::compact)
 
 c(1, NULL, 3, NA, 5) %>% compact
 ```
@@ -1450,7 +1696,7 @@ use `map_if` with predicate function and `map_at` with names or index
 
 ```{r "purrr::map_if"}
 iris %>%
-  map_if(is.factor, as.character) %>%
+  purrr::map_if(is.factor, as.character) %>%
   str()
 
 # Specify which columns to map with a numeric vector of positions:
@@ -1507,7 +1753,8 @@ apply a function at a set depth of a nested list
 
 `x %>% at_depth(2, fun)` is equivalent to `map(x, . %>% map(fun))`.
 
-```{r "purrr::at_depth"}
+```{r "purrr::modify_depth prep"}
+
 l1 <- list(
   obj1 = list(
     prop1 = list(param1 = 1:2, param2 = 3:4),
@@ -1519,6 +1766,10 @@ l1 <- list(
     )
   )
 
+```
+
+```{r "purrr::at_depth DEPRECATED", eval = FALSE}
+
 # In the above list, "obj" is level 1, "prop" is level 2 and "param"
 # is level 3. To apply sum() on all params, we map it at depth 3:
 l1 %>% at_depth(3, sum)
@@ -1529,28 +1780,41 @@ l1 %>% map(c("prop1", "param2")) %>% str()
 # But what if we want to pluck all param2 elements? Then we need to
 # act at a lower level:
 l1 %>% at_depth(2, "param2") %>% str()
+
 ```
 
-### contains
+```{r "purrr::modify_depth example"}
+
+l1 %>% purrr::modify_depth(3, sum )
+l1 %>% purrr::map(c("prop1", "param2"))
+l1 %>% purrr::modify_depth(2, "param2")
+l1 %>% purrr::modify_depth(2, ~ log(.$param2) )
+
+```
+
+
+### has_element
 
 predicate function for checking inclussion / containing of objects in another.
 
 works with lists and vectors. but there's some gotchas.
 
-```{r "purrr::contains"}
+```{r "purrr::has_element"}
+
 x <- list(1:10, 5, 9.9)
-x %>% contains(1:10)
-x %>% contains(3)
-list(1, 2, 3) %>% contains(2)
-c(1, 2, 3) %>% contains(2)
+x %>% has_element(1:10)
+x %>% has_element(3)
+list(1, 2, 3) %>% has_element(2)
+c(1, 2, 3) %>% has_element(2)
 
 # gotchas!
-1:3 %>% as.list %>% contains(2)
-1:3 %>% contains(2)
+1:3 %>% as.list %>% has_element(2)
+1:3 %>% has_element(2)
 
 # instead use
-1:3 %>% as.list %>% contains(2L)
-1:3 %>% contains(2L)
+1:3 %>% as.list %>% has_element(2L)
+1:3 %>% has_element(2L)
+
 ```
 
 ### invoke
@@ -1698,7 +1962,7 @@ NA %||% 2
 integer() %||% 2
 ```
 
-## tidyr {.tabset .tabset-fade .tabset-pills}
+# tidyr {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1744,7 +2008,7 @@ stocks %>%
                 ,price) # name of the numeric column to pivot
 ```
 
-## XLConnect {.tabset .tabset-fade .tabset-pills}
+# XLConnect {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1772,7 +2036,52 @@ wb %>% saveWorkbook
 file.remove(wbPath)
 ```
 
-## magrittr {.tabset .tabset-fade .tabset-pills}
+
+# tidytext {.tabset .tabset-fade .tabset-pills}
+
+```{r "installing tidytext", eval = FALSE}
+
+paste0("cran/",
+       c("hunspell", "mnormt", "psych", "RWekajars", "RWeka", "Snowball", "SnowballC", "tokenizers"
+         ,"janeaustenr", "ISOcodes", "stopwords")) %>%
+  c(.,"tidyverse/broom", "juliasilge/tidytext") %>%
+  (devtools::install_github)
+
+```
+
+Small example working with text data. In this case Jane Austin books.
+
+add row and chapter numbers.
+
+```{r "small example of working with text data"}
+
+janeaustenr::austen_books() %>% str
+
+(crudeBooks <-
+  janeaustenr::austen_books() %>%
+    dplyr::group_by(book) %>%
+    dplyr::mutate(
+      line = row_number()
+      ,chapter =
+        cumsum(stringr::str_detect(text, stringr::regex("^chapter [\\divxlc]", ignore_case = TRUE)))
+     ) %>%
+    (dplyr::ungroup)
+)
+
+```
+
+### Tokenize your data
+
+restructure data as *one-token-per-row* instead.
+
+```{r "tidytext::unnest_tokens"}
+
+(books <- crudeBooks %>% tidytext::unnest_tokens(word, text))
+
+```
+
+
+# magrittr {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1815,13 +2124,79 @@ list(1:3, letters[1:3]) %>% purrr::pmap(.f = zeroPaster)
 1:3 %>% purrr::map2(letters[1:3], zeroPaster)
 ```
 
-## regexes {.tabset .tabset-fade .tabset-pills}
+# regexes {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
 - see `?regex` for more details on Regular Expressions
 - can be used for many things. e.g. `strsplit`
 - also see `grep` section
+
+### classes
+
+- `[:alnum:]` Alphanumeric characters: `[:alpha:]` and `[:digit:]`.
+- `[:alpha:]` Alphabetic characters: `[:lower:]` and `[:upper:]`.
+- `[:blank:]` Blank characters: space and tab, and possibly other locale-dependent characters such as non-breaking space.
+- `[:cntrl:]` Control characters.  In ASCII, these characters have octal codes 000 through 037, and 177 (‘DEL’).  In another character set, these are the equivalent characters, if any.
+- `[:digit:]` Digits: `0 1 2 3 4 5 6 7 8 9`.
+- `[:graph:]` Graphical characters: `[:alnum:]` and `[:punct:]`.
+- `[:lower:]` Lower-case letters in the current locale.
+- `[:print:]` Printable characters: `[:alnum:]`, `[:punct:]` and space.
+- `[:punct:]` Punctuation characters: `! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ \` { | } ~`.
+- `[:space:]` Space characters: tab, newline, vertical tab, form feed, carriage return, space and possibly other locale-dependent characters.
+- `[:upper:]` Upper-case letters in the current locale.
+- `[:xdigit:]` Hexadecimal digits: `0 1 2 3 4 5 6 7 8 9 A B C D E F a b c d e f`.
+
+### Reverse logic
+
+use e.g. `[^0-9]`
+
+```{r}
+
+phoneNums <-
+  c("081398664455", "083114605084", "089606983350", "0878 83282686",
+"085770714422", "085237141280", "+6285348551672", "0215522687",
+"+60109445138", "085791400805", "085795044447", "0811296113",
+"082136714653", "082137487870", "081380380959", "081225120000",
+"081291551721", "082225633200", "0895348595086", "085604306828",
+"082376342537", "081336618616", "081316564350", "08161368240",
+"082346633851", "082284374650", "082157122629", "08126063500",
+"087821102719", "089618876742", "085888292599", "082292175370",
+"082259505304", "085230018600", "081247883268", "081230068486",
+"+6282285553134", "087881492265", "087882320948", "081219630831",
+"089530803830", "085640996911", "081363930762", "0217891234",
+"0895361710777", "085819650926", "0815 27967189", "08567704404",
+"081216802488", "085259810046", "081315259249", "082161568728",
+"081221410683", "087753142839", "082151785551", "081318762621",
+"082226329094", "08121808035", "0878830-15351", "081221626240",
+"081214858079", "081802222650", "089514562860", "082346907926",
+"082344655309", "085891433990", "081217068606", "081219048706",
+"085892290313", "085264074000", "081283644779", "083167604590",
+"081372558794", "085340731850", "+6283831611122", "081381034778",
+"08129209872", "082130763333", "081310063397", "08138507777",
+"0816605861", "085292434342", "081213457989", "089505709376",
+"081282341665", "082216363055", "+6285719223582", "081288402780",
+"02812345678910", "081916590999", "082232166668", "082111947219",
+"085749183589", "0851-0503-6982", "085692342663", "082187471400",
+"081296840701", "089517733237", "085228881033", "089505153702",
+"0271633565")
+
+phoneNums %>% gsub("[0-9]+", "\\1", .)
+phoneNums %>% gsub("[^0-9]+", "\\1", .)
+
+phoneNums %>% gsub("\\d+", "\\1", .)
+phoneNums %>% gsub("\\D+", "\\1", .)
+
+```
+
+or with classes
+
+```{r}
+
+phoneNums %>% gsub("[[:digit:]]+", "\\1", .)
+phoneNums %>% gsub("[^[:digit:]]+", "\\1", .)
+
+```
 
 ### splitting a string
 
@@ -1831,6 +2206,7 @@ split a string into a atomic vector
 library(magrittr)
 "name bad  good \t heaven" %>% strsplit("[[:space:]]+") %>% unlist
 ```
+
 
 ### extracting based on pattern
 
@@ -1855,21 +2231,26 @@ files %>% sub(rs, "\\1", .)
 
 regex in `dir` to list specific files from file system in a directory. similar to `ls` in Unix.
 
-```{r}
-# # say that `dir` returns the files below.
-# files <-
-#   c( "total-2016-25-attendance.tsv", "total-2016-26-attendance.tsv"
-#     ,"total-2016-27-attendance.tsv", "total-2016-28-attendance.tsv"
-#     ,"total-2016-29-attendance.tsv", "total-2016-30-attendance.tsv"
-#     ,"total-2016-31-attendance.tsv", "total-2016-32-attendance.tsv"
-#     ,"total-2016-33-attendance.tsv", "total-2016-34-attendance.tsv"
-#     ,"total-2016-35-attendance.tsv", "total-2016-36-attendance.tsv"
-#     ,"total-2016-37-attendance.tsv", "total-holiday-attendance.tsv"
-#   )
-# # use the `pattern` flag like below to only extract \d{4}-\d{2} file names.
-# dir(attendanceDir(center)
-#     ,pattern = paste(classType, "[-](\\d{4}[-]\\d{2}).*", sep = ""))
-#
+Below:
+
+- Say that `dir` returns the files below.
+- Use the `pattern` flag like below to only extract `\d{4}-\d{2}` file names.
+
+```{r, eval = FALSE}
+
+files <-
+  c( "total-2016-25-attendance.tsv", "total-2016-26-attendance.tsv"
+    ,"total-2016-27-attendance.tsv", "total-2016-28-attendance.tsv"
+    ,"total-2016-29-attendance.tsv", "total-2016-30-attendance.tsv"
+    ,"total-2016-31-attendance.tsv", "total-2016-32-attendance.tsv"
+    ,"total-2016-33-attendance.tsv", "total-2016-34-attendance.tsv"
+    ,"total-2016-35-attendance.tsv", "total-2016-36-attendance.tsv"
+    ,"total-2016-37-attendance.tsv", "total-holiday-attendance.tsv"
+  )
+
+dir(attendanceDir(center)
+    ,pattern = paste(classType, "[-](\\d{4}[-]\\d{2}).*", sep = ""))
+
 ```
 
 ```{r}
@@ -1925,7 +2306,7 @@ MobileTel %>%
   grepl(pattern = "^1340|^1341|^1342|^1346|^136|^150|^152|^183|^184|^187|^188")
 ```
 
-## Helpers {.tabset .tabset-fade .tabset-pills}
+# Helpers {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -1962,6 +2343,7 @@ isEmpty <- function(obj) UseMethod("isEmpty")
 isEmpty.default <- function(obj) obj %>% length %>% equals(0)
 isEmpty.data.frame <- function(dtf) dtf %>% nrow %>% equals(0)
 isEmpty.tbl <- function(obj) obj %>% as.data.frame %>% isEmpty
+isEmpty.character <- function(chrs) chrs %>% `==`("")
 
 integer(0) %>% isEmpty
 1:3 %>% isEmpty
@@ -1969,6 +2351,9 @@ list() %>% isEmpty
 1:3 %>% as.list %>% isEmpty
 data.frame(price = integer(0)) %>% isEmpty
 data.frame(price = 1:3) %>% isEmpty
+"" %>% isEmpty
+'' %>% isEmpty
+'a' %>% isEmpty
 ```
 
 ### isNonEmpty
@@ -2006,6 +2391,7 @@ data.frame(a = runif(10)) %>% filter_(paste("a > ", threshold %>% asQuoted))
 similar to ruby's `compact`.
 
 ```{r}
+
 library(magrittr)
 compact <- function(object) { UseMethod("compact") }
 compact.list <- function(lst){
@@ -2024,9 +2410,11 @@ compact.list <- function(lst){
        c = integer(0),
        d = character(0),
        e = 3,
-       f = data.frame(ii = integer(0), cc = character(0)))
-  %>% compact
+       f = data.frame(ii = integer(0), cc = character(0))
+       ,g = NA
+       ) %>% compact
   )
+
 ```
 
 ### prepend
@@ -2037,6 +2425,22 @@ add `prepend` (for nice naming) since `append` exists
 prepend <- function(x, values) { append(values, x) }
 append(1:2, 6:8)
 prepend(1:2, 6:8)
+```
+
+### append / prepend class
+
+```{r "prepend class"}
+
+appendClass <- function(obj, cls) {
+  class(obj) %<>% append(cls)
+  obj
+}
+
+prependClass <- function(obj, cls) {
+  class(obj) %<>% prepend(cls)
+  obj
+}
+
 ```
 
 ### wordArray
@@ -2179,19 +2583,21 @@ coalesce(a, b, c)
 
 using `ggplot` get multiple plots in the same window
 
+TODO: add to package, would be nice, actually maybe make a helper package w documentation etc.
+
+Multiple plot function
+
+ggplot objects can be passed in `...`, or to plotlist (as a list of ggplot objects)
+- `cols`:   Number of columns in layout
+- `layout`: A matrix specifying the layout. If present, 'cols' is ignored.
+
+If the layout is something like `matrix(c(1,2,3,3), nrow=2, byrow=TRUE)`,
+then plot 1 will go in the upper left, 2 will go in the upper right, and
+3 will go all the way across the bottom.
+
+
 ```{r "multiplot function"}
-# TODO: add to package, would be nice, actually maybe make a helper package w documentation etc.
-#
-# Multiple plot function
-#
-# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
-# - cols:   Number of columns in layout
-# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
-#
-# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
-# then plot 1 will go in the upper left, 2 will go in the upper right, and
-# 3 will go all the way across the bottom.
-#
+
 multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
   library(grid)
 
@@ -2259,7 +2665,7 @@ multiplot(p1, p2, p3, p4, cols = 2)
 taken from [R cookbook](http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/)
 
 
-## Cheats {.tabset .tabset-fade .tabset-pills}
+# Cheats {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -2269,41 +2675,40 @@ Section for "tricks".
 
 `save` saves the R-object(s) to disc and keeps the naming
 
-```{r}
-# save(foo,file="data.Rda")
-# load("data.Rda")
+```{r, eval = FALSE}
+save(foo,file="data.Rda")
+load("data.Rda")
 ```
 
 `saveRDS` saves one object and does not keep the name for the object.
 
-```{r}
-# saveRDS(foo, file="data.Rda")
-# bar <- readRDS(file="data.Rda")
+```{r, eval = FALSE}
+saveRDS(foo, file="data.Rda") # even for S4 objects
+bar <- readRDS(file="data.Rda")
 ```
 
-```{r}
-# write
-# write.table
-# write.csv
+```{r, eval = FALSE}
+write
+write.table
+write.csv
 ```
 
-```{r}
-# library(MASS)
-# mat <- matrix(1:100,nrow=20)
-# write.matrix(mat,'file.prn',sep = "\t")
-#
-# mat2 <- as.matrix(read.table("file.prn", as.is = TRUE))
-# # make mat2 a true matrix by removing the names
-# mat2 <- unname(mat2)
-# all.equal(mat, mat2) # [1] TRUE
+```{r, eval = FALSE}
+library(MASS)
+mat <- matrix(1:100,nrow=20)
+write.matrix(mat,'file.prn',sep = "\t")
+
+mat2 <- as.matrix(read.table("file.prn", as.is = TRUE))
+mat2 <- unname(mat2) # make mat2 a true matrix by removing the names
+all.equal(mat, mat2) # [1] TRUE
 ```
 
-```{r}
-# dput; dget
+```{r, eval = FALSE}
+dput; dget # not for S4 objects
 ```
 
-```{r}
-# dump; source
+```{r, eval = FALSE}
+dump; source # not for S4 objects
 ```
 
 ### remove names
@@ -2319,13 +2724,17 @@ dt <- data.frame(V1 = runif(100) %>% round,
     )
   )
 crossMatrix %>% unname
+```
 
-# or NULLify either row or column names
+or NULLify either row or column names
+
+```{r}
 
 colnames(crossMatrix) <- NULL
 crossMatrix
 rownames(crossMatrix) <- NULL
 crossMatrix
+
 ```
 
 ### remove named columns
@@ -2361,6 +2770,8 @@ insert.character <- function(chr, position, insertion){ # only works with \w cha
 ### time-series convertions
 
 ```{r}
+
+devtools::install_github("cran/xts")
 library(xts)
 price <- structure(list(
   date = c(20070103L, 20070104L, 20070105L, 20070108L, 20070109L,
@@ -2370,9 +2781,11 @@ price <- structure(list(
   row.names = c("1", "2", "3", "4", "5", "6", "7", "8", "9"))
 price$date %<>% as.character %>% as.Date(format="%Y%m%d")
 xts(price$close, price$date)
+
 ```
 
 ```{r}
+
 library(zoo)
 pricez <- read.zoo(text="   DATE  CLOSE
  1    20070103 54.700
@@ -2387,6 +2800,7 @@ pricez <- read.zoo(text="   DATE  CLOSE
  ")
 index(pricez) <- as.Date(as.character(index(pricez)), format="%Y%m%d")
 pricez
+
 ```
 
 `ts` (time-series) object to `data.frame`
@@ -2401,13 +2815,15 @@ UKgas %>%
 ### Tables
 
 ```{r, eval=FALSE, echo=FALSE}
-devtools::install_github('cran/gtools')
-devtools::install_github('cran/gdata')
-devtools::install_github('cran/gmodels')
+
+dependencies <- c("gtools", "gdata", "gmodels")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
 ```
 
 ```{r}
-require(gmodels)
+
+library(gmodels)
 data(infert, package = "datasets")
 
 CrossTable(warpbreaks$wool,
@@ -2427,8 +2843,8 @@ CrossTable(infert$education, infert$induced, expected = TRUE, format="SPSS")
 Cumulativily sum the `carb` column within each `am`-group
 
 ```{r}
-require(magrittr)
-require(dplyr)
+library(magrittr)
+library(dplyr)
 ( mtcars
   %>% filter(cyl == "6")
   %>% select(carb, gear, am)
@@ -2451,7 +2867,7 @@ c(3, 6, 12) %>%
   Reduce(rbind, .)
 ```
 
-## Dates {.tabset .tabset-fade .tabset-pills}
+# Dates {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -2467,6 +2883,7 @@ strftime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") # creates a `character`
 strptime("01:30:00", "%H:%M:%S")
 strptime("20160927", "%Y%m%d")
 strptime(20160927, "%Y%m%d")
+strptime(20160927, "%Y%m%d") %>% weekdays
 as.POSIXct("2011-03-27 01:30:00")
 as.POSIXct("2011-03-27 01:30:00") %>% class
 as.POSIXct("2011-03-27 01:30:00") %>% class
@@ -2484,7 +2901,7 @@ strptime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") %>% format("%H")
 ### combining date & time
 
 ```{r}
-require(magrittr)
+library(magrittr)
 d1 <- as.Date("1970-10-12")
 t1 <- "10:40"
 paste(d1, t1) %>% as.POSIXct
@@ -2497,7 +2914,7 @@ today <- Sys.Date()
 format(today, format = "%Y-%W")
 ```
 
-## Factors {.tabset .tabset-fade .tabset-pills}
+# Factors {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -2578,12 +2995,23 @@ mp %>% dplyr::filter(pa > "M 1")
 ### transforming factors
 
 ```{r}
-require(magrittr)
+library(magrittr)
 levels <- 1:4
 factorVariable <- factor(levels,
                          labels=levels+10)
 factorVariable %>% as.integer # returns underlying levels
 factorVariable %>% as.character # returns labels
+```
+
+### compact factor
+
+to weed out empty factors
+
+```{r "compact factor"}
+asCompactFactor <- function(fctr) fctr %>% as.character %>% as.factor
+(nonCompactFactor <- factor(c("A", "C", "A"), levels = LETTERS[1:5]))
+nonCompactFactor %>% asCompactFactor
+
 ```
 
 ### edit factors
@@ -2595,14 +3023,14 @@ alter / remap factor-levels
 - NOTE: the mapping is reversed in the two approaches
 - NOTE: use `as.character` in remapFactor2 to avoid serious bugs
 
+remapFactor code taken from [vignette](https://cran.r-project.org/web/packages/gdata/vignettes/mapLevels.pdf)
+
 ```{r}
 (fvar <-
   gl(n = 3, # number of levels
      k = 2, # number of replications
      labels = c("Control", "Treatment1", "Treatment2")))
 
-# remapFactor code taken from
-# https://cran.r-project.org/web/packages/gdata/vignettes/mapLevels.pdf
 remapFactor <- function(fctr, fctrMap){ levels(fctr) <- fctrMap ; fctr }
 remapFactor2 <- function(fctr, fctrMap){ fctr %>% as.character %>% fctrMap[.] %>% unname %>% as.factor }
 
@@ -2641,8 +3069,41 @@ c(1, 0, 0, NA, 1) %>%
   factor(c("N", "Y", "U"))
 ```
 
+### rm one level factors
 
-## Lists {.tabset .tabset-fade .tabset-pills}
+from a data frame you might want to remove columns that are factors with only one level (since there's no variance). (compact factor / sparse factor)
+
+```{r "rmOneLevelFactors"}
+isOneLevelFactor <- function(vctr) {(vctr %>% is.factor) & (vctr %>% levels %>% length %>% equals(1))}
+rmOneLevelFactors <- function(dta)
+  dta %>%
+    purrr::map(function(col) if(col %>% isOneLevelFactor) NULL else col ) %>%
+    compact %>% as.data.frame
+
+data.frame(a = gl(2,2), b = gl(1,4), d = 1:4) %>% rmOneLevelFactors
+
+```
+
+# Data Frames {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+section for working with `data.frame`
+
+### combining
+
+to concatenating / combining / binding data frames
+
+```{r "combining data frames"}
+
+d1 <- data.frame(a = 1, b = 2)
+d2 <- data.frame(b = 1, a = 2)
+rbind(d1, d2) # returns expected combined data.frames, names are intact
+
+```
+
+
+# Lists {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -2684,39 +3145,56 @@ l1 %>% exclude(c("qsec", "vs", "am")) %>% str
 adding / appending / pushing / concatenating lists can be done with `append`
 
 ```{r "combing lists"}
+
 la <- list(a = 1:2, rr = runif(4))
 lb <- list(b = 3)
 append(la, lb)
 
-# same with tibble
+```
+
+same with tibble
+
+```{r}
 
 library(tibble)
 la <- lst(a = 1:2, rr = runif(4))
 lb <- lst(b = 3)
 append(la, lb)
+
 ```
 
-lists with overlapping object names will still merge (not overwrite) but extraction gets iffy
+lists with overlapping object names will still merge (not overwrite) and extraction gets iffy
 
 ```{r "combining list gotcha"}
+
 la <- list(a = 1:2, rr = runif(4))
 lr <- list(rr = 3)
 (ll <- append(la, lr))
 ll[["rr"]] # grabs the first object with corresponding name. use index to access the later "rr"
 
-# tibble is consistent with list
-library(tibble)
-la <- lst(a = 1:2, rr = runif(4))
-lr <- lst(rr = 3)
+```
+
+tibble is consistent with list
+
+```{r}
+
+la <- tibble::lst(a = 1:2, rr = runif(4))
+lr <- tibble::lst(rr = 3)
 (ll <- append(la, lr))
 ll[["rr"]]
+
+purrr::update_list(la, !!! lr) # use purrr::update_list with splicing !!! / UQS()
+
 ```
+
+
 
 ### multi-layer lists
 
 build larger lists and iterate with them
 
 ```{r "multi-layer lists"}
+
 library(magrittr)
 dates <-
   list( day1 = "2015-12-12"
@@ -2726,7 +3204,11 @@ dates <-
 wkdays <- dates %>% sapply(weekdays, simplify = FALSE)
 mnths <- dates %>% sapply(months, simplify = FALSE)
 
-## How do we combine these in one named list?
+```
+
+How do we combine these in one named list?
+
+```{r}
 
 mapply(FUN = function(dta, name){
          list( dta = dta
@@ -2739,7 +3221,11 @@ mapply(FUN = function(dta, name){
   ,SIMPLIFY = FALSE
   )
 
-## or even better
+```
+
+or even better
+
+```{r}
 
 dd <- dates %>% sapply(function(dta){list(date = dta)}, simplify = FALSE)
 dd %>%
@@ -2747,12 +3233,18 @@ dd %>%
            append(lst, list(weekday = lst$date %>% weekdays))
           }, simplify = FALSE)
 
-## or more succinct if it makes sense
+```
+
+or more succinct if it makes sense
+
+```{r}
+
 dates %>%
   sapply(function(dta){
            list( date = dta
                 ,weekday = dta %>% weekdays)
           }, simplify = FALSE)
+
 ```
 
 use tibble and purrr
@@ -2767,7 +3259,11 @@ dates %>%
             ,weekday = date %>% weekdays)
        }) # %>% as.tibble
 
-# multiple arguments to map does NOT work as expected
+```
+
+multiple arguments to map does NOT work as expected
+
+```{r}
 
 dates %>%
   as.tibble %>%
@@ -2778,8 +3274,11 @@ dates %>%
             ,label = dayLabel)
       })
 
-# mix nested lists and vectors
+```
 
+mix nested lists and vectors
+
+```{r}
 datesList <-
   dates %>%
     map(function(date){
@@ -2792,6 +3291,7 @@ datesList %>% map(function(ddt){
     ddt$meta %<>% append(list(month = ddt$date %>% months))
     ddt
    })
+
 ```
 
 ### iteration and names
@@ -2807,22 +3307,32 @@ sapply(dayList, sqrt, simplify = FALSE)
 accessing list item name inside function
 
 ```{r "list item access from inside function"}
+
 dayPrinter <- function(dta, listName) paste0(listName, ": ", dta)
 Map(dayPrinter
     ,dayList
     ,names(dayList))
 
-# or with `mapply`, since `Map` is directly using `mapply`
+```
+
+or with `mapply`, since `Map` is directly using `mapply`
+
+```{r}
 
 mapply(FUN = dayPrinter, dayList, names(dayList), SIMPLIFY = FALSE)
 
-# use a function to remove the boiler plate
+```
+
+use a function to remove the boiler plate
+
+```{r}
 
 mapplyWithNames <- function(lst, FUN) mapply(FUN = FUN, lst, names(lst), SIMPLIFY = FALSE)
 dayList %>% mapplyWithNames(dayPrinter)
+
 ```
 
-## Comparing objects {.tabset .tabset-fade .tabset-pills}
+# Comparing objects {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -2849,27 +3359,37 @@ v1 == v2
 all.equal(v1, v2)
 identical(v1, v2)
 
-# order significant, naturally
-v1s <- c(2,3,1)
+v1s <- c(2,3,1) # order significant, naturally
 v1 == v1s
 all.equal(v1, v1s)
 
-# also for named vectors
+```
+
+comparing named vectors
+
+```{r "comparing named vectors"}
+
 v3n <- c(`a` = 1, b = 2)
 v3ns <- c(b = 2, `a` = 1)
 v3n == v3ns
 all.equal(v3n, v3ns)
+
 ```
 
 ### comparing lists
 
 ```{r "comparing lists"}
+
 l1 <- list(aa = 1, bb = 2)
 l2 <- list(bb = 2, aa = 1)
-# l1 == l2 # not implemented
-all.equal(l1, l2, check.attributes = FALSE)
+all.equal(l1, l2, check.attributes = FALSE) # l1 == l2 # not implemented
 
-# order insignificant list comparison
+```
+
+order insignificant list comparison
+
+```{r }
+
 isEquivalentList <- function(list1, list2){
   if(length(list1) != length(list2)) return(FALSE)
   setdiff(list1, list2) %>% isEmpty
@@ -2882,17 +3402,15 @@ isEquivalentList(l2, l1)
 isEquivalentList(l3, l1)
 isEquivalentList(l1, l3)
 
-# checks values
-isEquivalentList(l1, l4)
+isEquivalentList(l1, l4) # checks values
 
-# does not check names
-isEquivalentList(l1, l5)
+isEquivalentList(l1, l5) # does not check names
 
-# works on vectors too
-isEquivalentList(v1, v2)
+isEquivalentList(v1, v2) # works on vectors too
+
 ```
 
-## Plots {.tabset .tabset-fade .tabset-pills}
+# Plots {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -2989,7 +3507,7 @@ ggplot(airquality, aes(Wind)) + geom_histogram()
 ### Boxplot
 
 ```{r}
-require(ggplot2)
+library(ggplot2)
 (ggplot(mpg, aes(class, hwy))
  + geom_boxplot(outlier.size = 0.5)
 )
@@ -3215,7 +3733,7 @@ pairs(~Sepal.Length+Sepal.Width+Petal.Length+Petal.Width, data=iris,
 Has options to condition the scatterplot matrix on a factor.
 
 ```{r}
-require(lattice)
+library(lattice)
 super.sym <- trellis.par.get("superpose.symbol")
 splom(~iris[1:4],
       groups = Species,
@@ -3233,20 +3751,14 @@ splom(~iris[1:4],
 The `car` package can condition the scatterplot matrix on a factor, and optionally include lowess and linear best fit lines, and boxplot, densities, or histograms in the principal diagonal, as well as rug plots in the margins of the cells.
 
 ```{r, eval=FALSE, echo=FALSE}
-devtools::install_github('cran/minqa')
-devtools::install_github('cran/nloptr')
-devtools::install_github('cran/Rcpp')
-devtools::install_github('cran/RcppEigen')
-devtools::install_github('cran/lme4')
-devtools::install_github('cran/pbkrtest')
-devtools::install_github('cran/SparseM')
-devtools::install_github('cran/MatrixModels')
-devtools::install_github('cran/quantreg')
-devtools::install_github('cran/car')
+
+dependencies <- c("minqa", "nloptr", "Rcpp", "RcppEigen", "lme4", "pbkrtest", "SparseM", "MatrixModels", "quantreg", "car")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
 ```
 
 ```{r}
-require(car)
+library(car)
 scatterplot.matrix(~mpg+disp+drat+wt|cyl, data=mtcars,
   	main="Three Cylinder Options")
 ```
@@ -3260,21 +3772,35 @@ devtools::install_github("cran/gclus")
 ```
 
 ```{r}
-require(gclus)
+
+library(gclus)
 dta <- mtcars[c(1,3,5,6)] # get data
 dta.r <- abs(cor(dta)) # get correlations
 dta.col <- dmat.color(dta.r) # get colors
-# reorder variables so those with highest correlation
-# are closest to the diagonal
+
+```
+
+reorder variables so those with highest correlation are closest to the diagonal
+
+```{r}
+
 dta.o <- order.single(dta.r)
 cpairs(dta, dta.o, panel.colors=dta.col, gap=.5,
 main="Variables Ordered and Colored by Correlation" )
+
 ```
 
 #### gpairs
 
+```{r, eval = FALSE}
+
+dependencies <- c("barcode", "lmtest", "vcd", "gpairs")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
+```
+
 ```{r}
-require(gpairs)
+library(gpairs)
 
 if (allexamples) {
   y <- data.frame(A=c(rep("red", 100), rep("blue", 100)),
@@ -3310,15 +3836,15 @@ if (allexamples) {
 #### GGally
 
 ```{r, eval=FALSE, echo=FALSE}
-devtools::install_github('cran/prettyunits')
-devtools::install_github('cran/progress')
-devtools::install_github('cran/reshape')
-devtools::install_github('cran/GGally')
+
+dependencies <- c("prettyunits", "progress", "reshape", "GGally")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
 ```
 
 ```{r ggally_matrix_plot }
-require(GGally)
-require(dplyr)
+library(GGally)
+library(dplyr)
 if (allexamples){
   ds <- read.csv("for-gally.csv")
   ds$sex <- ifelse(ds$female==1, "female", "male") %>% as.factor
@@ -3335,10 +3861,8 @@ if (allexamples){
   ggpairs(tips[, 1:3])
   ggpairs(tips, 1:3, columnLabels = c("Total Bill", "Tip", "Sex"))
   ggpairs(tips, 1:3, upper = "blank")
-  # Only Variable Labels on the diagonal (no axis labels)
-  ggpairs(tips[, 1:3], axisLabels="internal")
-  # Only Variable Labels on the outside (no axis labels)
-  ggpairs(tips[, 1:3], axisLabels="none")
+  ggpairs(tips[, 1:3], axisLabels="internal") # Only Variable Labels on the diagonal (no axis labels)
+  ggpairs(tips[, 1:3], axisLabels="none") # Only Variable Labels on the outside (no axis labels)
 
   ggpairs(
     tips[, c(1, 3, 4, 2)],
@@ -3364,11 +3888,16 @@ if (allexamples){
 }
 
 custom_car <- ggpairs(mtcars[, c("mpg", "wt", "cyl")], upper = "blank", title = "Custom Example")
-# ggplot example taken from example(geom_text)
-  plot <- ggplot2::ggplot(mtcars, ggplot2::aes(x=wt, y=mpg, label=rownames(mtcars)))
-  plot <- plot +
-    ggplot2::geom_text(ggplot2::aes(colour=factor(cyl)), size = 3) +
-    ggplot2::scale_colour_discrete(l=40)
+
+```
+
+ggplot example taken from example(geom_text)
+
+```{r}
+plot <- ggplot2::ggplot(mtcars, ggplot2::aes(x=wt, y=mpg, label=rownames(mtcars)))
+plot <- plot +
+  ggplot2::geom_text(ggplot2::aes(colour=factor(cyl)), size = 3) +
+  ggplot2::scale_colour_discrete(l=40)
 custom_car[1, 2] <- plot
 personal_plot <- ggally_text(
   "ggpairs allows you\nto put in your\nown plot.\nLike that one.\n <---"
@@ -3381,9 +3910,9 @@ custom_car
 
 Depricated.
 
-```{r}
-# require(ggplot2)
-# plotmatrix(with(iris, data.frame(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width)))
+```{r, eval = FALSE}
+library(ggplot2)
+plotmatrix(with(iris, data.frame(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width)))
 ```
 
 ### ggplot2 with multiple datasets and colors
@@ -3397,22 +3926,27 @@ dspeed <- c(rnorm(1000, 2),
            rnorm(1000, 1))
 lvlData <- data.frame(passed = dpassed, speed = dspeed)
 samples <- factor(c("Passed", "Total"))
-# TODO: FIX ME
-# (
-#   ggplot(lvlData %>% filter(passed == "Yes"),
-#          aes(x=speed, color="Sample", shape="Sample", linetype="Sample"))
-#   + stat_ecdf(data=lvlData,
-#               aes(x=speed, color="Total", shape="Total", linetype="Total"))
-#   + stat_ecdf(aes(color="Passed", shape="Passed", linetype="Passed"))
-#   + xlab("")
-#   + ylab("inclusion")
-#   + labs(title="Average days to completion")
-#   + scale_color_manual(breaks=samples, values=c("green", "red"))
-#   + scale_shape_manual(breaks=samples, values=c(16, 16))
-#   + scale_linetype_manual(breaks=samples, values=c(1, 1))
-#   + labs(color = "dataset")
-#   + theme(legend.title=element_blank())
-# )
+
+```
+
+TODO: FIX ME
+
+```{r , eval = FALSE}
+(
+  ggplot(lvlData %>% filter(passed == "Yes"),
+         aes(x=speed, color="Sample", shape="Sample", linetype="Sample"))
+  + stat_ecdf(data=lvlData,
+              aes(x=speed, color="Total", shape="Total", linetype="Total"))
+  + stat_ecdf(aes(color="Passed", shape="Passed", linetype="Passed"))
+  + xlab("")
+  + ylab("inclusion")
+  + labs(title="Average days to completion")
+  + scale_color_manual(breaks=samples, values=c("green", "red"))
+  + scale_shape_manual(breaks=samples, values=c(16, 16))
+  + scale_linetype_manual(breaks=samples, values=c(1, 1))
+  + labs(color = "dataset")
+  + theme(legend.title=element_blank())
+)
 ```
 
 ### add linear regression line
@@ -3453,7 +3987,7 @@ or a polynomial
 
 ```
 
-## Statistical Tests {.tabset .tabset-fade .tabset-pills}
+# Statistical Tests {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -3469,9 +4003,10 @@ Use the Wilcoxon signed-rank test when samples are related / paired.
 
 Example code [@wilcoxTest]
 
+Two-sample test.
+
 ```{r}
-require(graphics)
-## Two-sample test.
+library(graphics)
 x <- c(0.80, 0.83, 1.89, 1.04, 1.45, 1.38, 1.91, 1.64, 0.73, 1.46)
 y <- c(1.15, 0.88, 0.90, 0.74, 1.21)
 wilcox.test(x, y, alternative = "greater")
@@ -3480,10 +4015,16 @@ wilcox.test(x, y, alternative = "greater",
 
 wilcox.test(rnorm(10), rnorm(10, 2), conf.int = TRUE)
 
-## Formula interface.
+```
+
+Formula interface.
+
+```{r}
+
 boxplot(Ozone ~ Month, data = airquality)
 wilcox.test(Ozone ~ Month, data = airquality,
             subset = Month %in% c(5, 8))
+
 ```
 
 ### Wilcoxon signed-rank test
@@ -3497,12 +4038,15 @@ x <- c(1.83,  0.50,  1.62,  2.48, 1.68, 1.88, 1.55, 3.06, 1.30)
 y <- c(0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29)
 
 wilcox.test(x, y, paired = TRUE, alternative = "greater")
+```
 
-## One-sample test version.
+One-sample test version.
+
+```{r }
 wilcox.test(y - x, alternative = "less",
             exact = FALSE, correct = FALSE) # H&W large sample approximation
 
-require(MASS)
+library(MASS)
 wilcox.test(immer$Y1, immer$Y2, paired=TRUE)
 ```
 
@@ -3579,7 +4123,7 @@ warpbreaks %T>%
   TukeyHSD("tension", ordered = TRUE)
 ```
 
-## Supervised {.tabset .tabset-fade .tabset-pills}
+# Supervised {.tabset .tabset-fade .tabset-pills}
 
 ### Notations {#supervised-notations}
 
@@ -3588,34 +4132,60 @@ warpbreaks %T>%
 
 ### Model selection
 
-BSS - Best subset selection
+Linear regression. BSS - Best subset selection
 
-```{r}
+```{r leaps regsubsets}
 library(magrittr)
-library(leaps)
-library(ISLR)
+data(Hitters, package="ISLR")
 
 Hitters %>% summary
 Hitters %<>% na.omit
-regfit.full <- regsubsets(Salary ~ ., data = Hitters)
+regfit.full <- leaps::regsubsets(Salary ~ ., data = Hitters)
 reg.summary <- regfit.full %>% summary
 reg.summary %>% names
 
+summariseRegsubset <- function(regsubset, icLabel){
+  ic <- regsubset %>% summary %>% .[[icLabel]]
+  plot(ic, xlab = "#features", ylab = icLabel)
+  points(ic %>% which.min, ic %>% min, pch = 20, col = "red")
+  coef(regsubset, ic %>% which.min)
+}
+
 "Mallow's CP" %>% message
 reg.summary$cp
+summariseRegsubset(regfit.full, "cp")
+plot(regfit.full, scale = "Cp") # see ?leaps::plot.regsubsets for more scale options "r2", "adjr2" and "bic" are also available
 
 "BIC" %>% message
 reg.summary$bic
 
-plot(reg.summary$cp, xlab = "Number of Variables", ylab = "Cp")
-which.min(reg.summary$cp)
-points(8, reg.summary$cp[8], pch = 20, col = "red")
-
-plot(regfit.full, scale = "Cp")
-coef(regfit.full, 8)
+summariseRegsubset(regfit.full, "bic")
 ```
 
+Forward / Backward selection
+
+```{r "leabs forward / backward selection with leaps", eval = FALSE}
+
+regfitFwd <- leaps::regsubsets(Salary ~ ., data = Hitters, method = "forward")
+summariseRegsubset(regfitFwd, "bic")
+plot(regfitFwd, scale = "bic")
+
+regfitBwd <- leaps::regsubsets(Salary ~ ., data = Hitters, method = "backward")
+summariseRegsubset(regfitBwd, "bic")
+plot(regfitBwd, scale = "Cp")
+
+```
+
+GLM using `bestglm`
+
 ### Logistic Regression
+
+```{r "install ROCR", eval = FALSE}
+
+dependencies <- c("gplots", "rocr")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
+```
 
 In R, `glm` with `family` set is how logistic regression is implemented.
 
@@ -3627,16 +4197,78 @@ logRegMod <-
 
 logRegMod %>% summary
 
-# calculate model BIC
+```
+
+calculate model BIC
+
+```{r "bic calc"}
+
 BIC <- function(model, nSamples) model %>% AIC(k = log(nSamples))
 BIC(logRegMod, warpbreaks %>% nrow)
 
-# ROC
+```
+
+ROC
+
+```{r , "log reg ROC"}
+
 logRegMod %>% fitted %>%
   ROCR::prediction(warpbreaks$wool) %>%
   ROCR::performance(measure = "tpr",
                     x.measure = "fpr") %>%
   (ROCR::plot)
+
+```
+
+### GLM gotcha
+
+with variables that has too many labels compared to data observations (i.e. we have no DF)
+
+```
+>     glm(poisson2 ~.
++         ,data = strata %>% toStrataTrainingDta(outcomeVar = "poisson2")
++         ,family = "poisson")
+Error: inner loop 1; cannot correct step size
+In addition: Warning message:
+step size truncated due to divergence
+```
+
+### Negative Binomial
+
+with GLM
+
+```{r, "negative binomial example"}
+data(quine, package = "MASS")
+quine %>% str
+quine.nb1 <- MASS::glm.nb(Days ~ Sex/(Age + Eth*Lrn), data = quine)
+quine.nb2 <- update(quine.nb1, . ~ . + Sex:Age:Lrn)
+quine.nb3 <- update(quine.nb2, Days ~ .^4)
+anova(quine.nb1, quine.nb2, quine.nb3)
+quine.nb1 %>% summary
+```
+
+### SVM
+
+```{r "svm basic example"}
+
+model <- e1071::svm(Species ~ ., data = iris, probability = TRUE)
+summary(model)
+
+```
+
+model fitted vs real value (no CV, cheating of course)
+
+```{r}
+
+fitted(model) %>% table(iris$Species)
+
+```
+
+obtain label probabilities for each observation
+
+```{r}
+newObservations <- subset(iris %>% head, select = -Species)
+predict(model, newObservations, decision.values = TRUE, probability = TRUE)
 ```
 
 ### recursive partitioning
@@ -3658,8 +4290,7 @@ Classification in Kyphosis dataset like we did with `rpart`
 
 ```{r "party::ctree on Kyphosis data"}
 library(rpart)
-library(partykit)
-# library(party)
+library(partykit) # library(party)
 ctree(Kyphosis ~ Age + Number + Start
       ,data = kyphosis) %T>% print %>% plot(main = "Conditional Inference of Kyphosis data")
 ```
@@ -3685,19 +4316,23 @@ ozoneDt %>%
   group_by(segment) %>%
   summarise(avgOzone = mean(Ozone, na.rm = TRUE))
 
-### Mean squared error
-# mean((airq$Ozone - predict(airct))^2)
 ```
+
+Mean squared error
+
+```{r, eval = FALSE}
+mean((airq$Ozone - predict(airct))^2)
+```
+
+extract observation terminal node ID using either `predict` or `where`
 
 ```{r "party::ctree regression data extraction"}
-# extract observation terminal node ID using either `predict` or `where`
-airct %>% predict(type = "node")
-# airct %>% party::where # only in party
+airct %>% predict(type = "node") # airct %>% party::where # only in party
 ```
 
-```{r "party::ctree BinaryTree handling"}
-# airct %>% nodes(4) # extract nodes # party only
-# airct %>% response %>% summary # extract the response variable from the formula. # party only
+```{r "party::ctree BinaryTree handling", eval = FALSE}
+airct %>% nodes(4) # extract nodes # party only
+airct %>% response %>% summary # extract the response variable from the formula. # party only
 ```
 
 nominal variable classification
@@ -3706,9 +4341,12 @@ nominal variable classification
 irisct <- ctree(Species ~ .,data = iris)
 irisct %T>% print %>% plot
 table(predict(irisct), iris$Species)
+```
 
-### response of tree for the given observations (probabilities of levels in Species)
-# treeresponse(irisct, newdata = iris[c(1,61, 120),]) # party only
+response of tree for the given observations (probabilities of levels in Species)
+
+```{r, eval = FALSE}
+treeresponse(irisct, newdata = iris[c(1,61, 120),]) # party only
 ```
 
 ordinal regression. `ME` from the `mammoexp` data frame is an ordinal factor.
@@ -3717,9 +4355,12 @@ ordinal regression. `ME` from the `mammoexp` data frame is an ordinal factor.
 data("mammoexp", package = "TH.data")
 mammoct <- ctree(ME ~ ., data = mammoexp)
 plot(mammoct)
+```
 
-### response of tree for the given observations (probabilities of levels in ME)
-# treeresponse(mammoct, newdata = mammoexp[1:4,]) # party only
+response of tree for the given observations (probabilities of levels in ME)
+
+```{r, eval = FALSE}
+treeresponse(mammoct, newdata = mammoexp[1:4,]) # party only
 ```
 
 survival analysis.
@@ -3731,8 +4372,12 @@ GBSG2 %>% str
 GBSG2ct <- ctree(Surv(time, cens) ~ .,data = GBSG2)
 plot(GBSG2ct)
 
-### the tree response here is a whole survival fit (survfit object, e.g. can be plotted)
-# treeresponse(GBSG2ct, newdata = GBSG2[1:2,]) # party only
+```
+
+the tree response here is a whole survival fit (survfit object, e.g. can be plotted)
+
+```{r, eval = FALSE}
+treeresponse(GBSG2ct, newdata = GBSG2[1:2,]) # party only
 ```
 
 options (see `?ctree_control` for options)
@@ -3785,10 +4430,13 @@ ctree( height ~ .
 
 extracting node splits conditions for each terminal node.
 
+[SO link](https://stackoverflow.com/questions/21443203/ctree-how-to-get-the-list-of-splitting-conditions-for-each-terminal-node)
+
+```{r "install emilrehnberg/party.readpaths", eval = FALSE}
+devtools::install_github("emilrehnberg/party.readpaths")
+```
+
 ```{r "generated data and ctree"}
-# https://stackoverflow.com/questions/21443203/ctree-how-to-get-the-list-of-splitting-conditions-for-each-terminal-node
-# install emilrehnberg/party.readpaths
-# devtools::install_github("emilrehnberg/party.readpaths")
 shiftFirstPart <- function(vctr, divideBy, proportion = .5){
   vctr[vctr %>% length %>% multiply_by(proportion) %>% round %>% seq] %<>% divide_by(divideBy)
   vctr
@@ -3804,8 +4452,16 @@ gdt <-
              ,point = runif(n) %>% shiftFirstPart(1.2)
              )
 gct <- party::ctree( is_buyer ~ ., data = gdt)
-# party.readpaths::readCtreePaths(gct, gdt)
-# dts <- gdt; ct <- gct
+
+party.readpaths::readCtreePaths(gct, gdt) # dts <- gdt; ct <- gct
+gct %>% plot
+
+```
+
+In `partykit`
+
+```{r, eval = FALSE}
+partykit:::.list.rules.party(ct)
 ```
 
 ```{r}
@@ -3813,16 +4469,29 @@ detach(package:partykit)
 airq <- subset(airquality, !is.na(Ozone))
 act <-
   party::ctree( Ozone ~ .
-        ,data = airq
-        # ,maxsurrogate = 3 # partykit
+        ,data = airq # ,maxsurrogate = 3 # partykit
         ,controls = party::ctree_control(maxsurrogate = 3) # party
         )
-# partykit:::.list.rules.party(ct)
 party.readpaths::readCtreePaths(act, airq) # party only
 
 data(plantTraits, package = "cluster")
 pct <- party::ctree( height ~ .  ,data = plantTraits)
 party.readpaths::readCtreePaths(pct, plantTraits)
+```
+
+prediction for the `party` package.
+
+terminal nodes & response data prediction
+
+```{r "prediction on party::ctree objects"}
+pct %>% party::where(newdata = plantTraits[1:10,])
+pct %>% party::treeresponse(newdata = plantTraits[1:10,]) # not sure what this is.. >.<
+```
+
+response prediction
+
+```{r}
+pct %>% predict(newdata = plantTraits[1:10,])
 ```
 
 
@@ -3872,8 +4541,7 @@ devtools::install_github('cran/randomForest')
 ```
 
 ```{r}
-require(randomForest)
-##data(iris)
+library(randomForest)
 set.seed(71)
 (iris.rf <-
 	randomForest(
@@ -3882,7 +4550,12 @@ set.seed(71)
 		importance=TRUE,
     do.trace = 100, # adds the extra output per 100 tree iteration
 		proximity=TRUE))
-## Look at variable importance:
+
+```
+
+Look at variable importance:
+
+```{r}
 round(importance(iris.rf), 2)
 ```
 
@@ -3922,16 +4595,21 @@ test <- iris[-ind,]
 dim(iris.rf1$test$prox)
 ```
 
+"x" can be a matrix instead of a data frame:
+
 ```{r}
-## "x" can be a matrix instead of a data frame:
 set.seed(17)
 x <- matrix(runif(5e2), 100)
 y <- gl(2, 50) # Generate Factor Levels: 2 levels, 50 of each level
 (myrf <- randomForest(x, y)) # parentheses leads to printing of the declaration
 predict(myrf, x)
 
-## stratified sampling: draw 20, 30, and 20 of the species to grow each tree.
-##data(iris)
+```
+
+stratified sampling: draw 20, 30, and 20 of the species to grow each tree.
+
+```{r}
+
 randomForest(Species ~ .,
              data = iris,
              sampsize=c(20, 30, 20))
@@ -3947,16 +4625,18 @@ randomForest(Species ~ .,
 Example code [@rfPackage] [@sll10b]
 
 ```{r message=FALSE}
-require(MASS)
-require(randomForest)
-require(magrittr)
+
+library(MASS)
+library(randomForest)
+library(magrittr)
 library(ggplot2)
+
 ```
 
 ```{r}
+
 set.seed(101)
-# ?Boston # to see more data info. it's housing values in Boston suburbs.
-Boston %>% str
+Boston %>% str # ?Boston # to see more data info. it's housing values in Boston suburbs.
 
 train <- 1:nrow(Boston) %>% sample(300)
 
@@ -3976,7 +4656,12 @@ forests <-
                  ntree = nTreesToFit)
   })
 
-# Variables of highest "Importance"
+```
+
+Variables of highest "Importance"
+
+```{r}
+
 forests[[maxVarsToTry]] %>% importance %>% round(2) %>% as.data.frame %>% arrange(desc(`%IncMSE`)) # Removes row names >.<
 
 testData <- Boston[-train,]
@@ -3999,14 +4684,24 @@ ggplot(errors, aes(x = varsPerSplit %>% as.factor, y = errors, group = src, colo
   xlab("Variables per split") +
   ylab("Mean Squared Error")
 
-## data(airquality)
 set.seed(131)
 (ozone.rf <- randomForest(Ozone ~ ., data=airquality, mtry=3,
                          importance=TRUE, na.action=na.omit))
-## Show "importance" of variables: higher value mean more important:
+
+```
+
+Show "importance" of variables: higher value mean more important:
+
+```{r}
+
 ozone.rf %>% importance %>% round(2)
 
-## randomForest call with test data
+```
+
+randomForest call with test data
+
+```{r}
+
 set.seed(131)
 trainObservations <- seq(1:nrow(airquality)) %>% sample(133)
 testData <- airquality[-trainObservations, ] %>% na.omit # no NAs in the test data!
@@ -4019,22 +4714,42 @@ randomForest(Ozone ~ .,
              importance=TRUE,
              na.action=na.omit)
 
-## "complicated" formula:
+```
+
+"complicated" formula:
+
+```{r}
+
 (swiss.rf <- randomForest(sqrt(Fertility) ~ . - Catholic + I(Catholic < 50),
                           data=swiss))
 predict(swiss.rf, swiss)
 
-## Test use of 53-level factor as a predictor:
+```
+
+Test use of 53-level factor as a predictor:
+
+```{r}
+
 set.seed(1)
 x <- data.frame(x1=gl(53, 10),
                 x2=runif(530),
                 y=rnorm(530))
 (rf1 <- randomForest(y ~ ., data=x, ntree=10))
 
-## Grow no more than 4 nodes per tree:
+```
+
+Grow no more than 4 nodes per tree:
+
+```{r}
+
 randomForest(Species ~ ., data=iris, maxnodes=4, ntree=30) %>% treesize
 
-## test proximity in regression
+```
+
+test proximity in regression
+
+```{r}
+
 (iris.rrf <-
   randomForest(Sepal.Width ~ .,
                data=iris,
@@ -4042,6 +4757,7 @@ randomForest(Species ~ ., data=iris, maxnodes=4, ntree=30) %>% treesize
                proximity=TRUE,
                oob.prox=FALSE))
 iris.rrf$proximity %>% str
+
 ```
 
 #### Imputation
@@ -4066,8 +4782,7 @@ Random forests has two ways of replacing missing values.
 iris.na <- iris
 
 set.seed(111)
-## artificially drop some data values.
-for (i in 1:4) iris.na[sample(150, sample(20)), i] <- NA
+for (i in 1:4) iris.na[sample(150, sample(20)), i] <- NA ## artificially drop some data values.
 
 iris.na %>% summary
 na.roughfix(iris.na) %>% summary
@@ -4082,8 +4797,7 @@ randomForest(Species ~ ., iris.na, na.action = na.roughfix)
 iris.na <- iris
 
 set.seed(111)
-## artificially drop some data values.
-for (i in 1:4) iris.na[sample(150, sample(20)), i] <- NA
+for (i in 1:4) iris.na[sample(150, sample(20)), i] <- NA ## artificially drop some data values.
 
 set.seed(222)
 iris.imputed <- rfImpute(Species ~ ., iris.na)
@@ -4107,15 +4821,17 @@ devtools::install_github("cran/gbm")
 ```
 
 ```{r message=FALSE}
-require(MASS)
-require(magrittr)
-require(gbm) # Gradient Boosted Machines
+
+library(MASS)
+library(magrittr)
+library(gbm) # Gradient Boosted Machines
+
 ```
 
 ```{r}
+
 set.seed(101)
-# ?Boston # to see more data info. it's housing values in Boston suburbs.
-Boston %>% str
+Boston %>% str # ?Boston # to see more data info. it's housing values in Boston suburbs.
 
 train <- 1:nrow(Boston) %>% sample(300)
 
@@ -4127,7 +4843,13 @@ boost.boston <-
       shrinkage = 0.01,
       interaction.depth = 4)
 boost.boston %>% summary # gives variance importance plot.
-# variables lstat (lower status) and rm (rooms) are impacting the most.
+
+```
+
+variables lstat (lower status) and rm (rooms) are impacting the most.
+
+```{r}
+
 boost.boston %>% plot(i = "lstat") # partical dependency plot for the two most important plots.
 boost.boston %>% plot(i = "rm")
 
@@ -4150,8 +4872,13 @@ plot(n.trees,
      ylab = "Mean Squared Error",
      xlab = "# Trees",
      main = "Boosting Test Error")
-# from the RF w/o boosting.
-# run that example first if you want to compare the boost vs non-boost results.
+```
+
+From the RF w/o boosting.
+Run that example first if you want to compare the boost vs non-boost results.
+
+```{r "boosting plot: doesn't work", eval = FALSE}
+
 abline(h = min(errors$test),
        col="red")
 ```
@@ -4159,8 +4886,8 @@ abline(h = min(errors$test),
 #### Classification
 
 ```{r message=FALSE}
-require(magrittr)
-require(gbm) # Gradient Boosted Machines
+library(magrittr)
+library(gbm) # Gradient Boosted Machines
 ```
 
 ```{r}
@@ -4188,19 +4915,87 @@ predictions <-
              %>% table(testData$Species)
             )
          }, simplify = FALSE))
-# prediction accuracy
+
+```
+
+prediction accuracy
+
+```{r}
+
 ( classifiationTables
   %>% sapply(diagonalProportion)
  )
 
-# # only thing required for one n.trees
-# (
-#   predictions
-#   %>% apply(1, which.max)
-#   %>% factor(labels = predictions %>% dimnames %>% .[[2]])
-#   %>% table(testData$Species)
-#  )
 ```
+
+only thing required for one n.trees
+
+```{r, eval =FALSE}
+
+(
+  predictions
+  %>% apply(1, which.max)
+  %>% factor(labels = predictions %>% dimnames %>% .[[2]])
+  %>% table(testData$Species)
+ )
+
+```
+
+### HMM
+
+Hidden markov models. With `depmixS4` package
+
+```{r eval = FALSE}
+
+devtools::install_github(paste("cran", c("truncnorm", "Rsolnp", "depmixS4"), sep="/"))
+
+```
+
+data `speed` consists of three time series with three variables:
+
+1. response time `rt`
+2. accuracy `corr` (and previous `corr` in `prev`)
+3. covariate, `Pacc`, the relative pay-off for speeded versus accurate responding.
+
+```{r "simple depmix model"}
+
+data("speed", package = "depmixS4")
+speed %>% str
+speed$Pacc %>% table %>% as.matrix
+
+speedSimpleModel <- list(mixModel =
+  depmixS4::depmix(
+    response = rt ~ 1
+    ,data = speed
+    ,nstates = 2 # number of model states
+    ,trstart = runif(4) # transition parameters
+   )
+ )
+
+speedSimpleModel$fitted <- depmixS4::fit(speedSimpleModel$mixModel, emc = depmixS4::em.control(rand = FALSE))
+
+speedSimpleModel %>% print
+
+```
+
+Covariates on the transition probabilities
+
+```{r, "depmix with covariates in transitions"}
+
+speedTransCovarModel <- list(unfitted =
+  depmixS4::depmix(
+    response = rt ~ 1
+    ,data = speed
+    ,nstates = 2
+    ,family = gaussian()
+    ,transition = ~ scale(Pacc)
+    ,instart = runif(2)
+   )
+ )
+speedTransCovarModel$fitted <- depmixS4::fit(speedTransCovarModel$unfitted, emc = depmixS4::em.control(rand = FALSE) )
+
+```
+
 
 ### Classification
 
@@ -4209,7 +5004,8 @@ Other classification methods are e.g.
 - C4.5 (weka package?) can be used for classification with more labels
     - categorical inputs splits in multiple nodes, one for each level value
 
-## Unsupervised { .tabset .tabset-fade .tabset-pills }
+
+# Unsupervised { .tabset .tabset-fade .tabset-pills }
 
 ### Overview
 
@@ -4220,16 +5016,36 @@ methods for unsupervised learning.
 principal component analysis
 
 ```{r "PCA USArrests"}
-prcomp(USArrests %>% dplyr::select(-state))  # inappropriate
 
-printSummary <- function(x) x %>% summary %>% print
-prcomp(USArrests %>% dplyr::select(-state), scale = TRUE) %T>% printSummary %>% biplot
+prcomp(USArrests %>% dplyr::select(-state))  # inappropriate, due to lack of scaling
 
-# using formula
+```
+
+prints standard deviations & loadings
+
+```{r}
+
+(usarrestsPcaFit <- prcomp(USArrests %>% dplyr::select(-state), scale = TRUE))
+usarrestsPcaFit %>% summary   # prints Importance of components
+usarrestsPcaFit %>% loadings  # prints loadings?
+usarrestsPcaFit$scores        # prints principal components
+usarrestsPcaFit %>% biplot    # plots a PC1/PC2 with loadings
+
+```
+
+using formula
+
+```{r}
+
 prcomp(~ Murder + Assault + Rape, data = USArrests, scale = TRUE)
+prcomp(~ . - state, data = USArrests, scale = TRUE)
 
-# only works with numerical variables
-# prcomp(warpbreaks %>% dplyr::select(-breaks), scale = TRUE) # doesn't work
+```
+
+only works with numerical variables
+
+```{r, eval = FALSE}
+prcomp(warpbreaks %>% dplyr::select(-breaks), scale = TRUE) # doesn't work
 ```
 
 PCA components with color from factor variable.
@@ -4241,6 +5057,29 @@ prcompIris$x %>% as.data.frame %>%
 ```
 
 to fortify these simple PCA plots look up [fortify PCA ploting](https://cran.r-project.org/web/packages/ggfortify/vignettes/plot_pca.html)
+
+### Factor Analysis
+
+Exploratory Factor Analysis
+
+[ref](https://www.statmethods.net/advstats/factor.html)
+
+```{r, "efa"}
+
+harmanFA <-
+  factanal(covmat = Harman74.cor
+           ,factors = 3
+           ,rotation = "varimax"
+           )
+
+harmanFA %>% print(digits = 2, cutoff = .3, sort = TRUE)
+
+firstLoadings <- harmanFA$loadings[,1:2]
+firstLoadings %>% plot(type = "n")
+firstLoadings %>% text(labels = Harman74.cor$cov %>% row.names, cex = .7)
+
+```
+
 
 ### hierarchical clustering
 
@@ -4288,12 +5127,12 @@ par(opar)
 
 ### Random Forest
 
-Example code [@rfPackage]
+Example code [@rfPackage].
+
+The `unsupervised' case:
 
 ```{r "MDS with RF"}
-require(randomForest)
-## The `unsupervised' case:
-##data(iris)
+library(randomForest)
 set.seed(17)
 iris.urf <- randomForest(iris %>% dplyr::select(-Species))
 MDSplot(iris.urf, iris$Species) # Species sets the colors.
@@ -4385,12 +5224,10 @@ par(mfrow = c(2, 1))
 Section for forecasting
 
 ```{r, eval=FALSE, echo=FALSE}
-devtools::install_github("cran/timeDate")
-devtools::install_github("cran/quadprog")
-devtools::install_github("cran/tseries")
-devtools::install_github("cran/fracdiff")
-devtools::install_github("cran/RcppArmadillo")
-devtools::install_github("cran/forecast")
+
+dependencies <- c("timeDate", "quadprog", "TTR", "quantmod", "tseries", "fracdiff", "RcppArmadillo", "forecast")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
 ```
 
 ```{r}
@@ -4431,7 +5268,556 @@ fcast %>%
   lines(col = 2, lty = 2)
 ```
 
-## Best practices {.tabset .tabset-fade .tabset-pills}
+# Neural networks { .tabset .tabset-fade .tabset-pills }
+
+### Overview
+
+Section for neural nets. Doesn't fit in neither Supervised nor Unsupervised sections since NNs can be both. AKA Artificial Neural Networks.
+
+Packages
+
+- `neuralnet`
+- `nnet`
+- `DARCH`
+- `deepnet` [cran](https://cran.r-project.org/package=deepnet)
+- `h2o`
+
+### Theory
+
+#### Basics
+
+NN is a network of perceptrons. I.e. functions that take inputs & bias into an "activation function" and that yields an output.
+
+The perceptron includes:
+
+1. linear function
+2. Activation function, transforming the output from the linear function to the desired outcome range.
+
+The outputs are compared to known labels and coefficients/weights are adjusted (via gradient decent) repeatedly until either 1. max number of allowed iterations or 2. an acceptable error rate is hits.
+
+The process of feeding inputs to multiple perceptrons yielding an output is called *feed-forward*. I.e. the units do not form a cycle!
+
+#### Deep networks
+
+aka DNN - deep neural networks
+
+Vladmir Perervenko articles
+
+- [THIRD GENERATION NEURAL NETWORKS: DEEP NETWORKS](https://www.mql5.com/en/articles/1103)
+- [EVALUATION AND SELECTION OF VARIABLES FOR MACHINE LEARNING MODELS](https://www.mql5.com/en/articles/2029)
+- [DEEP NEURAL NETWORK WITH STACKED RBM. SELF-TRAINING, SELF-CONTROL](https://www.mql5.com/en/articles/1628)
+
+### h2o
+
+- is Java setup requiring JVM
+- the R installation is for an h2o API
+- interface is on the web
+
+- [ui](http://localhost:54321) - after running `h2o::h2o.init`
+- [vignette code examples](https://github.com/h2oai/h2o-3/tree/master/h2o-docs/src/booklets/v2_2015/source/R_Vignette_code_examples)
+- [cran](https://CRAN.R-project.org/package=h2o)
+- [github](https://github.com/h2oai/h2o-3)
+- [DNN use case, handwritten digits](http://didericksen.github.io/deeplearning-r-h2o/)
+
+supports
+
+- Deep Learning
+- Naive Bayes
+- Principal Components Analysis (PCA)
+- K-means
+- Stacked Ensembles
+- Generalized Linear Models (GLM)
+- Gradient Boosting Machine (GBM)
+- Generalized Low Rank Model (GLRM)
+- Distributed Random Forest (DRF)
+- Word2ve
+
+#### Installation
+
+Check version @ [download HP](https://www.h2o.ai/download/)
+
+```{r "install latest h2o", eval = FALSE}
+
+"cran" %>% paste(c("RCurl", "jsonlite"), sep = "/") %>% (devtools::install_github)
+
+# look at the \\d{4} in the repos, exchange when there's a new version. See new versions at the link above.
+install.packages("h2o", type="source", repos="http://h2o-release.s3.amazonaws.com/h2o/master/4208/R")
+
+```
+
+#### getting started
+
+```{r "h2o get started", eval = FALSE}
+
+h2o::h2o.init(nthreads = 2, max_mem_size = '4g') # use -1 to use all
+
+```
+
+#### importing data
+
+to work with data on h2o you need to import/upload data. Import is to a single node e.g. locally, but if you have a cluster you'll have to upload (`h2o.uploadFile()`).
+
+```{r "h2o importing data", eval = FALSE}
+
+#To import small iris data file from H2O’s package:
+iris.hex <- h2o.importFile(
+  path = system.file("extdata", "iris.csv", package="h2o")
+  ,destination_frame = "iris.hex"
+ )
+iris.hex %>% (h2o::h2o.str)
+iris.hex %>% as.data.frame %>% str
+iris %>% str
+
+#To import an entire folder of files as one data object:
+# pathToFolder = "/Users/data/airlines/"
+# airlines.hex = h2o.importFile(path = pathToFolder, destination_frame = "airlines.hex")
+
+#To import from HDFS and connect to H2O in R using the IP and port of an H2O instance running on your Hadoop cluster:
+ # h2o.init(ip= <IPAddress>, port =54321, nthreads = -1)
+ # pathToData = "hdfs://mr-0xd6.h2oai.loc/datasets/airlines_all.csv"
+ # airlines.hex = h2o.importFile(path = pathToData, destination_frame = "airlines.hex")
+
+# Converts R object "iris" into H2O object "iris.hex"
+iris.hex <- as.h2o(iris, destination_frame= "iris.hex")
+head(iris.hex)
+
+```
+
+#### working w data
+
+```{r "h2o working with data", eval = FALSE}
+
+h2o::h2o.init()
+airlines.hex <-
+  h2o::h2o.importFile(path = "/tmp/allyears2k.csv" # From "https://s3.amazonaws.com/h2o-airlinesunpacked/allyears2k.csv"
+                      ,destination_frame = "airlines.hex"
+                      )
+airlines.hex %>% class
+airlines.hex %>% str
+airlines.hex %>% summary
+
+# View quantiles and histograms
+quantile(x = airlines.hex$ArrDelay, na.rm = TRUE)
+h2o::h2o.hist(airlines.hex$ArrDelay)
+
+# Find number of flights by airport
+originFlights <- airlines.hex %>%
+  h2o::h2o.group_by(by = "Origin"
+                    ,nrow("Origin")
+                    ,gb.control=list(na.methods="rm")
+                    )
+# make the H2OFrame into a standard data.frame
+# H2OFrames are worked on in the h2o framework, i.e. not your regular R-session environment.
+originFlights %>% as.data.frame %>% str
+
+# Find number of flights per month
+(flightsByMonth <- airlines.hex %>%
+  h2o::h2o.group_by(by = "Month"
+                    ,nrow("Month")
+                    ,gb.control=list(na.methods="rm"))
+ )
+
+# Find months with the highest cancellation ratio
+cancellationsByMonth <- airlines.hex %>%
+  h2o::h2o.group_by(by = "Month"
+                    ,sum("Cancelled")
+                    ,gb.control=list(na.methods="rm"))
+cancellation_rate <- cancellationsByMonth$sum_Cancelled / flightsByMonth$nrow
+rates_table <- h2o::h2o.cbind(flightsByMonth$Month, cancellation_rate)
+rates_table %>% as.data.frame
+
+# CONTRIBUTE
+# >>>>.<<<<
+# This is disgusting, how can the output list not be named >.<
+# Construct test and train sets using sampling
+airlines.split <- airlines.hex %>% h2o.splitFrame(ratios = 0.85)
+airlines.train <- airlines.split[[1]]
+airlines.test <- airlines.split[[2]]
+
+# Display a summary using table-like functions
+h2o::h2o.table(airlines.train$Cancelled)
+h2o::h2o.table(airlines.test$Cancelled)
+
+# CONTRIBUTE: the 'converting into factors' is atrocious, help out with this.
+
+```
+
+GLM in `h2o`
+
+```{r "h2o.glm", eval = FALSE}
+
+# Define the data for the model and display the results
+airlines.glm <- h2o::h2o.glm(
+  training_frame=airlines.train
+  , x=c("Origin", "Dest", "DayofMonth", "Year", "UniqueCarrier", "DayOfWeek", "Month", "DepTime", "ArrTime", "Distance")
+  , y="IsDepDelayed"
+  , family = "binomial"
+  , alpha = 0.5
+  )
+# includes confusion matrix and a lot of stuff
+print(airlines.glm)
+# View model information: training statistics, performance, important variables
+summary(airlines.glm)
+
+# Predict using GLM model
+airlines.test[,X]
+pred <- h2o::h2o.predict(object = airlines.glm, newdata = airlines.test)
+# Look at summary of predictions: probability of TRUE class (p1)
+# CONTRIBUTE: the Booklet is incorrect
+summary(pred)
+
+# TODO: try to read results, they look funny.
+# Questions: does the h2o.glm require a numeric outcome?
+# the above uses regularization due to setting alpha, is standardization of the data required beforehand?
+
+```
+
+```
+> print(airlines.glm)
+Model Details:
+==============
+
+H2OBinomialModel: glm
+Model ID:  GLM_model_R_1519091204698_3
+GLM Model: summary
+    family  link                                regularization number_of_predictors_total number_of_active_predictors
+1 binomial logit Elastic Net (alpha = 0.5, lambda = 1.482E-4 )                        283                         174
+  number_of_iterations   training_frame
+1                    6 RTMP_sid_ac2f_11
+
+Coefficients: glm coefficients
+      names coefficients standardized_coefficients
+1 Intercept   124.608326                 -0.083354
+2  Dest.ABE    -0.038939                 -0.038939
+3  Dest.ABQ     0.619992                  0.619992
+4  Dest.ACY     0.000000                  0.000000
+5  Dest.ALB     0.000000                  0.000000
+
+---
+         names coefficients standardized_coefficients
+279      Month     0.043643                  0.082146
+280 DayofMonth    -0.030185                 -0.276507
+281  DayOfWeek     0.026462                  0.050342
+282    DepTime     0.000799                  0.372481
+283    ArrTime    -0.000070                 -0.033979
+284   Distance     0.000269                  0.155981
+
+H2OBinomialMetrics: glm
+** Reported on training data. **
+
+MSE:  0.2137609
+RMSE:  0.4623429
+LogLoss:  0.6163326
+Mean Per-Class Error:  0.3841098
+AUC:  0.7192129
+Gini:  0.4384258
+R^2:  0.1426972
+Residual Deviance:  45984.58
+AIC:  46334.58
+
+Confusion Matrix (vertical: actual; across: predicted) for F1-optimal threshold:
+         NO   YES    Error          Rate
+NO     6119 11576 0.654196  =11576/17695
+YES    2236 17374 0.114023   =2236/19610
+Totals 8355 28950 0.370245  =13812/37305
+
+Maximum Metrics: Maximum metrics at their respective thresholds
+                        metric threshold    value idx
+1                       max f1  0.383832 0.715568 279
+2                       max f2  0.111481 0.847229 388
+3                 max f0point5  0.549731 0.681752 185
+4                 max accuracy  0.529522 0.661520 197
+5                max precision  0.978396 1.000000   0
+6                   max recall  0.046384 1.000000 399
+7              max specificity  0.978396 1.000000   0
+8             max absolute_mcc  0.549731 0.324555 185
+9   max min_per_class_accuracy  0.527486 0.660639 198
+10 max mean_per_class_accuracy  0.549731 0.662039 185
+
+Gains/Lift Table: Extract with `h2o.gainsLift(<model>, <data>)` or `h2o.gainsLift(<model>, valid=<T/F>, xval=<T/F>)`
+
+```
+
+
+
+### deepnet
+
+- package is SUPER bare-bones
+    - only works with matrices
+    - does not use S3/S4 objects
+    - no formulas
+- autoencoder part seems to be supervised
+
+```{r, "install deepnet", eval = FALSE}
+
+devtools::install_github("cran/deepnet")
+
+```
+
+```{r "deepnet common setup"}
+
+# only works with matrices!!
+# obsEach <- 50
+# x <- data.frame(var1 = c(rnorm(obsEach, 1, 0.5), rnorm(obsEach, -0.6, 0.2))
+#                 ,var2 = c(rnorm(obsEach, -0.8, 0.2), rnorm(obsEach, 2, 1)))
+# y <- c(rep(1, obsEach), rep(0, obsEach))
+
+Var1 <- c(rnorm(50, 1, 0.5), rnorm(50, -0.6, 0.2))
+Var2 <- c(rnorm(50, -0.8, 0.2), rnorm(50, 2, 1))
+x <- matrix(c(Var1, Var2), nrow = 100, ncol = 2)
+y <- c(rep(1, 50), rep(0, 50))
+
+test_Var1 <- c(rnorm(50, 1, 0.5), rnorm(50, -0.6, 0.2))
+test_Var2 <- c(rnorm(50, -0.8, 0.2), rnorm(50, 2, 1))
+test_x <- matrix(c(test_Var1, test_Var2), nrow = 100, ncol = 2)
+test_y <- y
+
+```
+
+feed-forward neural network
+
+```{r "deepnet Training Neural Network"}
+
+# ?deepnet::nn.train
+nn <- deepnet::nn.train(x, y, hidden = c(5))
+deepnet::nn.test(nn, test_x, test_y) # returns error rate for classification
+
+```
+
+deep belief neural network. This function internally uses `rbm.train()` to train a restricted Boltzmann machine (which can also be used individually)
+
+The difference is mainly in the contrastive divergence algorithm that trains the restricted Boltzmann machines.
+It is set via cd, giving the number of iterations for Gibbs sampling inside the learning algorithm.
+[ref](http://www.rblog.uni-freiburg.de/2017/02/07/deep-learning-in-r/)
+
+```{r "deepnet Training Deep Belief Neural Network"}
+
+# ?deepnet::dbn.dnn.train
+dbDnn <- deepnet::dbn.dnn.train(x, y, hidden = c(5, 5))
+
+## predict by dbDnn
+# Test new samples by Trainded NN,return error rate for classification
+deepnet::nn.test(dbDnn, test_x, test_y)
+
+```
+
+Training a Deep neural network with weights initialized by Stacked AutoEncoder
+
+```{r "deepnet Training Stacked Autoencoder Neural Network"}
+
+# ?deepnet::sae.dnn.train
+saeDnn <- deepnet::sae.dnn.train(x, y, hidden = c(5, 5))
+
+## predict by saeDnn
+# Test new samples by Trainded NN,return error rate for classification
+deepnet::nn.test(saeDnn, test_x, test_y)
+
+```
+
+use `nn.predict` for predicting using the created from the train functions
+
+```{r "deepnet predict"}
+
+nnYPred <- deepnet::nn.predict(nn, test_x) %>% round(3)
+dbDnnYPred <- deepnet::nn.predict(dbDnn, test_x) %>% round(4)
+saeDnnYPred <- deepnet::nn.predict(saeDnn, test_x) %>% round(5)
+
+# weight initialzer prediction comparisons
+table(nnYPred, dbDnnYPred)
+table(nnYPred, saeDnnYPred)
+table(dbDnnYPred, saeDnnYPred)
+
+```
+
+### neuralnet
+
+- does basic NNs
+- overall janky user experience
+    - requires numeric output
+    - no dot formulas
+
+```{r, "install neuralnet & caTools & ISLR", eval = FALSE}
+
+devtools::install_github("cran/ISLR")
+devtools::install_github("cran/caTools")
+devtools::install_github("cran/neuralnet")
+
+```
+
+we will be using the `College` data set and try to predict the `Private` column based on the other columns / features.
+
+NN needs scaled features. Here scale the features to [0,1]
+
+```{r, "create data set with scaled features"}
+
+data(College, package = "ISLR")
+str(College)
+
+unitScale <- function(dta)
+  scale(dta
+        ,center = dta %>% purrr::map_dbl(min, na.rm = TRUE)
+        ,scale = dta %>% purrr::map(range, na.rm = TRUE) %>% purrr::map_dbl(diff)
+        )
+
+scaledCollegeFeatures <-
+  College %>% dplyr::select(-Private) %>% unitScale %>% as.data.frame %>%
+    dplyr::mutate(Private = College$Private %>% as.numeric %>% subtract(1))
+
+trainObsNumbers <- scaledCollegeFeatures %>% nrow %>% sample(., .*.2, replace = FALSE)
+
+```
+
+Applying `neuralnet`. Here with `hidden` set to 10 neurons for each of the 3 hidden layers.
+
+```{r "neural net function"}
+
+frml <-
+  paste("Private ~"
+        ,scaledCollegeFeatures %>% names %>% setdiff("Private") %>% paste(collapse = "+")
+        ) %>% as.formula
+
+# ?neuralnet::neuralnet
+nn <-
+  neuralnet::neuralnet(frml
+                       ,data = scaledCollegeFeatures[trainObsNumbers,]
+                       ,hidden = c(10,10,10) # hidden neurons at each layer.
+                       ,linear.output = FALSE
+                       )
+
+
+```
+
+if want to continue and read [NN blog post](https://www.kdnuggets.com/2016/08/begineers-guide-neural-networks-r.html/2)
+
+Plotting the output. We see the 2 hidden layers, each with 4,3 neurons / nodes. The blue text is the "bias" (intercept for the perceptron linear function).
+
+```{r "ploting with neuralnet"}
+
+neuralnet::neuralnet("Private ~ Enroll + Top10perc + Outstate + Books + PhD + Terminal + Expend"
+                     ,data = scaledCollegeFeatures[trainObsNumbers,]
+                     ,hidden = c(4,3) # hidden neurons at each layer.
+                     ,linear.output = FALSE
+                     ) %>% plot
+
+```
+
+### autoencoder NN
+
+An autoencoder neural network is an unsupervised learning algorithm that applies backpropagation to adjust its weights, attempting to learn to make its target values (outputs) to be equal to its inputs.
+In other words, it is trying to learn an approximation to the identity function, so as its output is similar to its input, for all training examples.
+With the sparsity constraint enforced (requiring that the average, over training set, activation of hidden units be small), such autoencoder automatically learns useful features of the unlabeled training data, which can be used for, e.g., data compression (with losses), or as features in deep belief networks.
+
+The training is performed by optimizing the autoencoder's cost function $J(W,b)$ that depends on the autoencoder's weights $W$ and biases $b$.
+The optimization (searching for a local minimum) is performed with the `optim` function using one of the three methods: `BFGS`, `L-BFGS-B`, or `CG` (see details in `help(optim)`).
+
+After the optimization converges, the mean squared error between the output and input matrix (either the training matrix, or a test matrix) is evaluated as a measure of goodness of fit of the autoencoder.
+
+see package `autoencoder`
+
+[cran](https://CRAN.R-project.org/package=autoencoder)
+
+[wiki](https://en.wikipedia.org/wiki/Autoencoder)
+
+```{r 'install autoencoder', eval = FALSE}
+
+devtools::install_github("cran/autoencoder")
+
+?autoencoder::autoencode
+
+```
+
+it exports 3 functions
+
+- `autoencoder::visualize.hidden.units`
+- `autoencoder::autoencode`
+- `autoencoder::predict.autoencoder`
+
+Train the autoencoder on unlabeled set of 5000 image patches of
+size `Nx.patch` by `Ny.patch`, randomly cropped from 10 nature photos:
+Load a training matrix with rows corresponding to training examples,
+and columns corresponding to input channels (e.g., pixels in images):
+
+```{r "autoencoder::autoencode example", eval = FALSE}
+
+data('training_matrix_N=5e3_Ninput=100' ## the matrix contains 5e3 image
+     ,package = "autoencoder")          ## patches of 10 by 10 pixels
+
+```
+
+Set up the autoencoder architecture:
+
+```{r }
+
+nl=3                          ## number of layers (default is 3: input, hidden, output)
+unit.type = "logistic"        ## specify the network unit type, i.e., the unit's
+                              ## activation function ("logistic" or "tanh")
+Nx.patch=10                   ## width of training image patches, in pixels
+Ny.patch=10                   ## height of training image patches, in pixels
+N.input = Nx.patch*Ny.patch   ## number of units (neurons) in the input layer (one unit per pixel)
+N.hidden = 10*10              ## number of units in the hidden layer
+lambda = 0.0002               ## weight decay parameter
+beta = 6                      ## weight of sparsity penalty term
+rho = 0.01                    ## desired sparsity parameter
+epsilon <- 0.001              ## a small parameter for initialization of weights
+                              ## as small gaussian random numbers sampled from N(0,epsilon^2)
+max.iterations = 2000         ## number of iterations in optimizer
+
+```
+
+Train the autoencoder on training.matrix using BFGS optimization method
+(see help('optim') for details):
+`WARNING: the training can take a long time (~1 hour) for this dataset!`
+
+
+```{r "don't run!", eval = FALSE }
+autoencoder.object <-
+  autoencoder::autoencode(
+    X.train=training.matrix
+    ,nl=nl
+    ,N.hidden=N.hidden
+    ,unit.type=unit.type
+    ,lambda=lambda
+    ,beta=beta
+    ,rho=rho
+    ,epsilon=epsilon
+    ,optim.method="BFGS"
+    ,max.iterations=max.iterations
+    ,rescale.flag=TRUE
+    ,rescaling.offset=0.001
+    )
+```
+
+N.B.: Training this autoencoder takes a long time, so in this example we do not run the above
+`autoencode` function, but instead load the corresponding pre-trained `autoencoder.object`.
+
+
+Report mean squared error for training and test sets:
+
+```{r, eval = FALSE}
+
+cat("autoencode(): mean squared error for training set: ",
+round(autoencoder.object$mean.error.training.set,3),"\n")
+
+```
+
+Extract weights W and biases b from autoencoder.object:
+
+```{r, eval = FALSE}
+
+W <- autoencoder.object$W
+b <- autoencoder.object$b
+
+```
+
+Visualize hidden units' learned features:
+
+```{r, eval = FALSE}
+
+visualize.hidden.units(autoencoder.object,Nx.patch,Ny.patch)
+
+```
+
+# Best practices {.tabset .tabset-fade .tabset-pills}
 
 ### Overview
 
@@ -4455,7 +5841,12 @@ wt_mean <- function(x, w) {
   }
   sum(w * x) / sum(x)
 }
-# wt_mean(1:6, 1:3) # > Error: `x` and `w` must be the same length
+```
+
+`x` and `w` must be the same length
+
+```{r, eval = FALSE}
+wt_mean(1:6, 1:3) # > Error: `x` and `w` must be the same length
 ```
 
 you can use `stopifnot` function to do multiple checks and get informative messages back
@@ -4472,18 +5863,23 @@ wt_mean <- function(x, w, na.rm = FALSE) {
   }
   sum(w * x) / sum(x)
 }
-# wt_mean(1:6, 6:1, na.rm = "foo") #> Error: is.logical(na.rm) is not TRUE
+```
+
+`is.logical(na.rm)` is not TRUE
+
+```{r, eval = FALSE}
+wt_mean(1:6, 6:1, na.rm = "foo") #> Error: is.logical(na.rm) is not TRUE
 ```
 
 Note that when using `stopifnot` you assert what should be true rather than checking for what might be wrong.
 
-## installation of packages  {.tabset .tabset-fade .tabset-pills}
+# installation of packages  {.tabset .tabset-fade .tabset-pills}
 
-### Overview
+## Overview
 
 notes for installing packages
 
-### after R upgrade
+## after R upgrade
 
 try to run `sudo R CMD javareconf` in the terminal.
 
@@ -4493,30 +5889,58 @@ library(magrittr)
 installFromCran <- function(pkgs) devtools::install_github(pkgs %>% paste("cran", ., sep = "/"))
 partyPkgs <- c('mvtnorm', 'modeltools', 'zoo', 'sandwich', 'strucchange', 'TH.data', 'survival', 'multcomp', 'coin', 'party')
 tibblePkgs <- c('rlang', 'tibble')
-roxygen2Pkgs <- c('brew', 'backports', 'rprojroot', 'desc', 'commonmark', 'xml2', 'roxygen2')
+roxygen2Pkgs <- c('stringi', 'stringr', 'brew', 'backports', 'rprojroot', 'desc', 'commonmark', 'xml2', 'roxygen2')
 testthatPkgs <- c('crayon', 'praise', 'testthat')
 rattlePkgs <- c("RGtk2", "rattle")
 lintrPkgs <- c( "registry", "iterators", "pkgmaker", "registry", "rngtools", "gridBase", "foreach", "doParallel"
                ,"NMF", "irlba", "rex", "stringdist", "igraph", "lintr")
 rmdPkgs <- c("htmltools", "bitops", "caTools", "base64enc", "rmarkdown")
-xlconnectPkgs <- c('XLConnectJars', 'XLConnect')
+xlconnectPkgs <- c('rJava','XLConnectJars', 'XLConnect')
 dplyrPkgs <- c( "bindr", "plogr", "bindrcpp", "glue", "pkgconfig", "rlang", "dplyr" )
-rsqlPkgs <- c("dplyr", "dbplyr", "RSQLServer")
+rsqlPkgs <- c("dplyr", "DBI", "dbplyr", "RSQLServer")
+knitrPkgs <- c("evaluate", "highr", "markdown", "yaml", "knitr")
 c( partyPkgs, tibblePkgs, roxygen2Pkgs, testthatPkgs, rattlePkgs, lintrPkgs, rmdPkgs
-  ,xlconnectPkgs, dplyrPkgs, rsqlPkgs, "tidyr", "matrixcalc", "dlm", "dbplyr") %>% installFromCran
+  ,xlconnectPkgs, dplyrPkgs, rsqlPkgs, knitrPkgs, "tidyr", "matrixcalc", "dlm", "dbplyr") %>% installFromCran
 
 devtools::install_github(c("emilrehnberg/party.readpaths"))
-# devtools::install_github(c( 'emilrehnberg/party.readpaths', 'jmp75/rClr'
-#                            ,"bescoto/RMSSQL", "bescoto/dplyr.mssql"))
+devtools::install_github(c("ramnathv/slidify"))
+devtools::install_github(c("ramnathv/slidifyLibraries"))
+```
 
-# copy below for running on server to install packages
+No longer needed
+
+```{r, eval = FALSE}
+devtools::install_github(c( 'emilrehnberg/party.readpaths', 'jmp75/rClr'
+                           ,"bescoto/RMSSQL", "bescoto/dplyr.mssql"))
+```
+
+copy below for running on server to install packages
+
+```{r, eval = FALSE}
 library(magrittr)
 installFromCran <- function(pkgs) devtools::install_github(pkgs %>% paste("cran", ., sep = "/"))
 dplyrPkgs <- c("bindr", "bindrcpp", "glue", "pkgconfig", "rlang", "dplyr" )
 installFromCran(dplyrPkgs)
 ```
 
-### RODBC
+## ggplot2
+
+installation of `ggplot2` using `devtools`
+
+```{r, "ggplot2 installation", eval = FALSE}
+
+devtools::install_github(file.path("cran", c("RColorBrewer", "dichromat", "plyr", "colorspace", "munsell", "labeling", "viridisLite", "gtable", "lazyeval", "reshape2", "scales")))
+devtools::install_github("tidyverse/ggplot2")
+
+```
+
+## shiny
+
+```{r, eval = FALSE }
+c("httpuv", "xtable", "sourcetools", "shiny") %>% paste0("cran/",.) %>% devtools::install_github()
+```
+
+## RODBC
 
 and `RODBCext`. perform before trying to install on mac. look for other solutions on linux/mac.
 
@@ -4524,7 +5948,7 @@ and `RODBCext`. perform before trying to install on mac. look for other solution
 brew update && brew install unixODBC
 ```
 
-### party
+## party
 
 install `party`.
 
@@ -4546,7 +5970,7 @@ devtools::install_github('cran/coin')
 devtools::install_github('cran/party')
 ```
 
-### partykit
+## partykit
 
 install `partykit`.
 
@@ -4560,7 +5984,7 @@ installing `partykit` dependencies.
 devtools::install_github('cran/Formula')
 ```
 
-### tibble
+## tibble
 
 installing `tibble`
 
@@ -4569,7 +5993,7 @@ devtools::install_github('cran/rlang')
 devtools::install_github('cran/tibble')
 ```
 
-### roxygen2
+## roxygen2
 
 ```{r, eval = FALSE }
 devtools::install_github('cran/brew')
@@ -4581,7 +6005,7 @@ devtools::install_github('cran/xml2')
 devtools::install_github('cran/roxygen2')
 ```
 
-### testthat
+## testthat
 
 ```{r, eval = FALSE }
 devtools::install_github('cran/crayon')
@@ -4589,7 +6013,7 @@ devtools::install_github('cran/praise')
 devtools::install_github('cran/testthat')
 ```
 
-### rattle
+## rattle
 
 ```{r, eval = FALSE }
 devtools::install_github('cran/rattle')
@@ -4601,7 +6025,7 @@ installing `rattle` dependencies. install `gtk+` via brew.
 devtools::install_github('cran/RGtk2')
 ```
 
-### rJava
+## rJava
 
 try to run `sudo R CMD javareconf` in the terminal.
 
@@ -4609,35 +6033,48 @@ try to run `sudo R CMD javareconf` in the terminal.
 install.packages("rJava")
 ```
 
-### lintr
+## lintr
 
 installing lintr
 
 ```{r, eval = FALSE, echo = FALSE}
 devtools::install_github("cran/registry") # pkgmaker dependency
 devtools::install_github("cran/iterators") # foreach dependency
-# NMF dependencies
-devtools::install_github( file.path("cran", c( "pkgmaker", "registry", "rngtools", "gridBase", "foreach", "doParallel" )))
+devtools::install_github( file.path("cran", c( "pkgmaker", "registry", "rngtools", "gridBase", "foreach", "doParallel" ))) # NMF dependencies
 devtools::install_github( file.path("cran", c("NMF", "irlba"))) # igraph dependencies
 devtools::install_github( file.path("cran", c("rex", "stringdist", "igraph")))
 devtools::install_github("cran/lintr")
 
 devtools::install_github( file.path("cran", c("rex", "stringdist", "igraph")))
 devtools::install_github("cran/lintr")
+
 ```
 
-### RSQLServer
+## bestglm
+
+installing `bestglm` package, similar to `leaps` but not limited to linear regression.
+
+```{R "bestglm installation", eval = FALSE}
+
+devtools::install_github(file.path("cran", c("glmnet", "grpreg")))
+devtools::install_github("cran/bestglm")
+library(bestglm)
+
+```
+
+## RSQLServer
 
 install `rJava`.
 
+CAREFUL! Do NOT install: `devtools::install_github('agstudy/rsqlserver')`
+
 ```{r, eval=FALSE, echo=FALSE }
-# install.packages("RSQLServer")
+install.packages("RSQLServer")
 devtools::install_github('jmp75/rClr') # brew install mono # for this
 devtools::install_github('imanuelcostigan/RSQLServer')
-# CAREFUL! Do NOT install: devtools::install_github('agstudy/rsqlserver')
 ```
 
-### dplyr.mssql
+## dplyr.mssql
 
 ```{r, eval=FALSE , echo=FALSE}
 devtools::install_github("bescoto/RMSSQL")
@@ -4650,7 +6087,8 @@ If there's a timeout-problem, try changing download method.
 
 ```{r, eval=FALSE , echo=FALSE}
 options(download.file.method = "wininet")
-# devtools::install_github("bescoto/dplyr.mssql", method = "wininet") # works? instead of setting the session options?
+
+devtools::install_github("bescoto/dplyr.mssql", method = "wininet") # works? instead of setting the session options?
 ```
 
 if there's problems with stringi, try below (the latter argument is for dealing with the case where the package has no matching version for R)
@@ -4659,7 +6097,7 @@ if there's problems with stringi, try below (the latter argument is for dealing 
 R CMD INSTALL stringi_1.1.1.tar.gz --configure-args='--disable-pkg-config'
 ```
 
-#### Dependency hell
+### Dependency hell
 
 `dplyr`, `RSQLServer` and `dplyr.mssql` has this dependency hell going on ATM (161121). `dplyr.mssql` depends on `dplyr` version 4 but
 latest `RSQLServer` requires >5.0. Downgrade `RSQLServer` and `dplyr` to make `dplyr.mssql` happy.
@@ -4671,12 +6109,9 @@ R CMD INSTALL v0.2.0.tar.gz
 wget https://cran.rstudio.com/src/contrib/Archive/dplyr/dplyr_0.4.3.tar.gz
 R CMD INSTALL dplyr_0.4.3.tar.gz
 
-# Old link doesn't work
-# wget https://cran.rstudio.com/src/contrib/RSQLServer_0.2.0.tar.gz
-# R CMD INSTALL RSQLServer_0.2.0.tar.gz
 ```
 
-## workflows
+# workflows
 
 ### Logging {.tabset .tabset-fade .tabset-pills}
 
@@ -4684,12 +6119,37 @@ R CMD INSTALL dplyr_0.4.3.tar.gz
 
 Section for understanding logging and directing output streams.
 
+defaults:
+
+```{r "default direction"}
+1:2 # goes to stdout()
+message("messaging") # goes to stderr()
+warning("warning") # goes to stderr()
+```
+
+to redirect message to standard output stream
+
+```{r "redirect message to stdout", eval = FALSE}
+message("more messaging") # going to stderr()
+sink(stdout(), type = "message")
+message("messaging to std out!") # goes to stdout()
+```
+
+redirecting regular output to standard error
+
+```{r "redirecting output stderr", eval = FALSE}
+1:2 # to stdout()
+sink(stderr(), type = "output")
+3:4 # to stderr()
+```
+
 #### redirecting IO
 
 all IO, stdout, stderr and warnings are sent to standard output stream.
 
-```{r "redirect IO"}
-#!/bin/usr/env Rscript
+start with `#!/bin/usr/env Rscript`
+
+```{r, eval = FALSE}
 sink(stdout(), type="message") # MAIN command for redirection
 message("message: testing 12")
 warning("achtung: deutchen furher")
@@ -4784,14 +6244,25 @@ opar <- par(mfrow = c(2, 2))
 
 ##### with Bernoulli posterior
 
+```{r, "bayesAB installation", eval = FALSE}
+
+devtools::install_github("cran/bayesAB")
+
+```
+
 ```{r "bayesAB package Bernoulli posterior"}
+
 nSamples <- 250
 A_binom <- rbinom(nSamples, size = 1, prob = .25) # size = 1 makes sure it's a bernoulli trial, so the outcome is either 0 or 1
 B_binom <- rbinom(nSamples, size = 1, prob = .2)
 
-# let's ignore that we know the samples in this case
-# we know the Bernoulli distribution probability is ~0.2-0.3.
-# with this in mind, we want prior parameters for a Beta that roughly matces these (Beta dist is conjugate prior to Binomial)
+```
+
+- let's ignore that we know the samples in this case
+- we know the Bernoulli distribution probability is ~0.2-0.3.
+- with this in mind, we want prior parameters for a Beta that roughly matces these (Beta dist is conjugate prior to Binomial)
+
+```{r}
 
 bayesAB::plotBeta(100, 200) # looks a little off
 bayesAB::plotBeta(65, 200) # looks way better
@@ -4804,11 +6275,13 @@ bayesAB::plotBeta(65, 200) # looks way better
                      ))
 AB1 %>% summary
 AB1 %>% plot
+
 ```
 
 ##### with Poisson posterior
 
 ```{r "bayesAB package Poisson posterior"}
+
 A_pois <- rpois(nSamples, 6.5)
 B_pois <- rpois(nSamples, 5.5)
 
@@ -4822,6 +6295,7 @@ bayesAB::plotGamma(30, 5) # 5-7 seem likely enough
                      ))
 AB2 %>% summary
 AB2 %>% plot
+
 ```
 
 ##### combining distribution
@@ -4845,5 +6319,5 @@ AB3 %>% plot
 par(opar)
 ```
 
-## References
+# References
 
