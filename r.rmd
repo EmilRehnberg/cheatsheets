@@ -121,13 +121,64 @@ GBSG2 %>% str
 with(GBSG2, { survival::Surv(time, cens) }) %>% head(10)
 ```
 
-# Standard Libraries {.tabset .tabset-fade .tabset-pills}
+# R-language design {.tabset .tabset-fade .tabset-pills}
 
-### Overview
+## Overview
 
-Looking at functions from e.g. `base` and `stats` packages that are loaded by default R.
+Section for R-language design and concepts. Packages, code, data loading
 
-### Control Flow
+## error handling
+
+use `tryCatch`
+
+with error handler
+
+```{r "error / exception handling", echo = TRUE}
+
+library(magrittr)
+myError <- simpleError("エッラー！")
+
+tryCatch({
+  print(1);
+  stop(myError)
+  print(2)
+}, error = function(err){
+  message("error function messages:")
+  (err %>% print)
+}, finally = {
+  print("always finish run with finally()")
+  message("finished tryCatch")
+})
+
+```
+
+with warning handler
+
+```{r}
+
+tryCatch({
+  print(1)
+  warning("ACHTUNG! ACHTUNG!")
+  print(2)
+}, warning = function(war){
+  message("warning function messages:")
+  (war %>% print)
+}, finally = {
+  print("always finish run with finally()")
+  message("finished tryCatch")
+})
+
+```
+
+`stop` returns exit code 1 (check with `$?` in ruby and `$?.exitstatus` especially)
+
+you can also use the `tools` package. but `pskill` does not returns a 0 exit status. `pskill` seems to be rather rough around the edges, use with care.
+
+```{r}
+# tools::pskill(Sys.getpid(), tools::SIGINT)
+```
+
+## Control Flow
 
 E.g. if / else statements
 
@@ -158,6 +209,48 @@ if(1 == 2) {
 }
 
 ```
+
+### ellipsis
+
+`...` / ellipsis or "dot-dot-dot"
+
+use an arbitrary number of arguments to a function
+
+```{r}
+a <- c(1,  2,  NA, 4, NA)
+b <- c(NA, NA, NA, 5, 6)
+c <- c(7,  8,  NA, 9, 10)
+```
+
+catch the arguments in a list
+
+```{r}
+elTrail1 <- function(...) list(...)
+```
+catch the arguments in a data frame
+
+```{r}
+elTrail2 <- function(...) data.frame(...)
+```
+
+extract the first argument
+
+```{r}
+elTrail3 <- function(...) ..1
+```
+
+extract the second argument
+
+```{r}
+elTrail4 <- function(...) ..2
+```
+
+
+# Standard Libraries {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Looking at functions from e.g. `base` and `stats` packages that are loaded by default R.
 
 ### Allocation
 
@@ -219,41 +312,6 @@ aka `[`. Use `drop` to keep the matrix.
 (m <- matrix(1:9, nrow = 3, dimnames = list(c("a", "b", "c"), LETTERS[1:3])))
 m[1, ] # first row of m (atomic vector)
 m[1, , drop = FALSE] # first row of m still as matrix
-```
-
-### ellipsis
-
-`...` / ellipsis or "dot-dot-dot"
-
-use an arbitrary number of arguments to a function
-
-```{r}
-a <- c(1,  2,  NA, 4, NA)
-b <- c(NA, NA, NA, 5, 6)
-c <- c(7,  8,  NA, 9, 10)
-```
-
-catch the arguments in a list
-
-```{r}
-elTrail1 <- function(...) list(...)
-```
-catch the arguments in a data frame
-
-```{r}
-elTrail2 <- function(...) data.frame(...)
-```
-
-extract the first argument
-
-```{r}
-elTrail3 <- function(...) ..1
-```
-
-extract the second argument
-
-```{r}
-elTrail4 <- function(...) ..2
 ```
 
 ### quantiles
@@ -696,57 +754,6 @@ structure( 1:3, nm = c("foo", "bar", "baz") ) # don't use `nm`
 structure( 1:3, names = c("foo", "bar", "baz") )
 # structure( 1:3, c("foo", "bar", "baz") ) # Error in structure(1:3, c("foo", "bar", "baz")) : attributes must be named
 ```
-
-### error handling
-
-use `tryCatch`
-
-with error handler
-
-```{r "error / exception handling", echo = TRUE}
-library(magrittr)
-myError <- simpleError("エッラー！")
-
-tryCatch({
-  print(1);
-  stop(myError)
-  print(2)
-}, error = function(err){
-  message("error function messages:")
-  (err %>% print)
-}, finally = {
-  print("always finish run with finally()")
-  message("finished tryCatch")
-})
-```
-
-with warning handler
-
-```{r}
-tryCatch({
-  print(1)
-  warning("ACHTUNG! ACHTUNG!")
-  print(2)
-}, warning = function(war){
-  message("warning function messages:")
-  (war %>% print)
-}, finally = {
-  print("always finish run with finally()")
-  message("finished tryCatch")
-})
-```
-
-`stop` returns exit code 1 (check with `$?` in ruby and `$?.exitstatus` especially)
-
-you can also use the `tools` package. but `pskill` does not returns a 0 exit status. `pskill` seems to be rather rough around the edges, use with care.
-
-```{r}
-# tools::pskill(Sys.getpid(), tools::SIGINT)
-```
-
-### commandArgs
-
-TODO: add section
 
 ### scale
 
