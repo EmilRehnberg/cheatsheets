@@ -415,17 +415,6 @@ m[1, ] # first row of m (atomic vector)
 m[1, , drop = FALSE] # first row of m still as matrix
 ```
 
-### quantiles
-
-quantiles for different probabilities, use `stats:quantile`
-
-```{r "quantile"}
-randomNormals <- rnorm(1001)
-randomNormals %>% quantile
-randomNormals %>% quantile(.4)
-randomNormals %>% quantile(probs = c(.1, .5, 1, 2, 5, 10, 50, NA)/ 100)
-```
-
 ### replications
 
 replicate elements of vectors and lists
@@ -4027,6 +4016,31 @@ or a polynomial
 ## Overview
 
 Section for statistics. Distributions, testing etc.
+
+## quantiles
+
+quantiles for different probabilities, use `stats:quantile`
+
+```{r "quantile"}
+
+randomNormals <- rnorm(1001)
+randomNormals %>% quantile
+randomNormals %>% quantile(.4)
+randomNormals %>% quantile(probs = c(.1, .5, 1, 2, 5, 10, 50, NA)/ 100)
+
+```
+
+## Distributions {.tabset .tabset-fade .tabset-pills}
+
+### Overview
+
+Section for probability distributions, e.g. Normal/Gaussian, Binomial, Beta
+
+### Beta distribution
+
+Typically used to model probabilities. Conjugate Prior to a Binomial distribution.
+
+[wiki](https://en.wikipedia.org/wiki/Beta_distribution)
 
 ## Statistical Tests {.tabset .tabset-fade .tabset-pills}
 
