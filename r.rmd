@@ -127,6 +127,20 @@ with(GBSG2, { survival::Surv(time, cens) }) %>% head(10)
 
 Section for R-language design and concepts. Packages, code, data loading
 
+## loading / unloading packages
+
+in order to attach / load / require packages use `library` (or `require` if you like problems).
+
+to detach / unload / remove a package from a session you can use `detach`
+
+```{r}
+exists("is_in") # from magrittr package
+detach(package:magrittr)
+exists("is_in")
+library(magrittr)
+exists("is_in")
+```
+
 ## error handling
 
 use `tryCatch`
@@ -210,7 +224,7 @@ if(1 == 2) {
 
 ```
 
-### ellipsis
+## ellipsis
 
 `...` / ellipsis or "dot-dot-dot"
 
@@ -245,6 +259,30 @@ extract the second argument
 elTrail4 <- function(...) ..2
 ```
 
+## Environments
+
+```{r}
+exists("abc")
+abc <- 2
+exists("abc")
+exists("pi", envir = emptyenv())
+exists("glm", envir = as.environment("package:base"))
+exists("glm", envir = as.environment("package:stats"))
+```
+
+## dump object to executable R code
+
+`dput` is your friend. NOTE: not suitable for S4 objects. try `writeRDS` or `save` for that.
+
+there's some gotchas though. When you're dumping a factor - the output might end up crazy long. Use `as.character` to get what you're looking for.
+
+```{r "dput gotcha"}
+library(dplyr)
+(USArrests %<>% mutate(state = USArrests %>% row.names %>% as.factor)) %>% str
+USArrests$state %>% head(2) %>% dput
+USArrests$state %>% head(2) %>% as.character %>% dput
+```
+
 
 # Standard Libraries {.tabset .tabset-fade .tabset-pills}
 
@@ -261,20 +299,6 @@ vector("integer", 6)
 vector("double", 7)
 vector("character", 8)
 vector("logical", 3)
-```
-
-### loading / unloading packages
-
-in order to attach / load / require packages use `library` (or `require` if you like problems).
-
-to detach / unload / remove a package from a session you can use `detach`
-
-```{r}
-exists("is_in") # from magrittr package
-detach(package:magrittr)
-exists("is_in")
-library(magrittr)
-exists("is_in")
 ```
 
 ### File Manipulation
@@ -420,19 +444,6 @@ or by some other grouping
 split(airquality, airquality$Month)
 ```
 
-### dump object to executable R code
-
-`dput` is your friend. NOTE: not suitable for S4 objects. try `writeRDS` or `save` for that.
-
-there's some gotchas though. When you're dumping a factor - the output might end up crazy long. Use `as.character` to get what you're looking for.
-
-```{r "dput gotcha"}
-library(dplyr)
-(USArrests %<>% mutate(state = USArrests %>% row.names %>% as.factor)) %>% str
-USArrests$state %>% head(2) %>% dput
-USArrests$state %>% head(2) %>% as.character %>% dput
-```
-
 ### parse CL args
 
 parsing command line arguments / parameters
@@ -440,20 +451,19 @@ parsing command line arguments / parameters
 - use `#!/usr/bin/env Rscript` on top of the executable file (`tca.r` let's say)
 - call `./tca.r --args a=1 name=\'Billy\'`
 - use the `commandArgs`, `parse` and `eval` functions to read the parameters into your script
+- sometimes if `trailingOnly` is set, `--args` is still in there
 
 ```{r "commandArgs"}
 library(magrittr)
-# sometimes if trailingOnly is set, --args is still in there
 arguments <- c("a=1", "name=\'Billy\'") # commandArgs(trailingOnly = TRUE)
 for(argument in arguments){
   eval(parse(text = argument))
 }
 ```
 
-into a `data.frame`
+into a `data.frame`. This works but then all columns are strings
 
 ```{r "command line arguments into data.frame"}
-# this works but then all columns are strings
 arguments %>% strsplit("=") %>% sapply(function(strings) purrr::set_names(strings[2], strings[1]) )
 ```
 
@@ -495,15 +505,19 @@ Sys.getenv()
 Sys.info() %>% as.matrix
 
 .libPaths()
-# useful for installing packages to a specific library / folder
-# install.packages("magrittr", lib = .libPaths()[2])
-# default lib parameter is .libPaths()[1] which tends to be user specific
+```
 
-# R_LIBS_USER sets the personal library for a user
-# Sys.unsetenv("R_LIBS_USER")
-# can unset this so you use a global library path instead
+useful for installing packages to a specific library / folder: `install.packages("magrittr", lib = .libPaths()[2])`
 
-# R home
+default lib parameter is `.libPaths()[1]` which tends to be user specific
+
+`R_LIBS_USER` sets the personal library for a user.
+
+`Sys.unsetenv("R_LIBS_USER")` can unset this so you use a global library path instead
+
+R home
+
+```{r}
 R.home()
 Sys.getenv("R_HOME")
 ```
@@ -577,17 +591,6 @@ cut(U,
     labels = labels,
     ordered_result = TRUE, # for ordered factors (not always well supported)
     include.lowest = TRUE)
-```
-
-### Environments
-
-```{r}
-exists("abc")
-abc <- 2
-exists("abc")
-exists("pi", envir = emptyenv())
-exists("glm", envir = as.environment("package:base"))
-exists("glm", envir = as.environment("package:stats"))
 ```
 
 ### matching
