@@ -1,0 +1,127 @@
+
+#### Regression
+
+random forest boosting with continous response.
+
+- authors suggest $m = \sqrt(p)$ (See [Notations](#supervised-notations))
+- see latter half of `mpv Movies/statistical-learning/08-tree-based-methods/StatsLearning Lect10 R trees B 111213-IY7oWGXb77o.mp4`
+
+Below `gbm` - Gradient Boosted Machines - is being used
+
+```{r, eval=FALSE, echo=FALSE}
+devtools::install_github("cran/gbm") # old an not maintained?
+devtools::install_github("gbm-developers/gbm3") # newer but seems to have died ~2017
+devtools::install_github("gbm-developers/gbm") # old but seems to have some maintainance
+```
+
+```{r }
+
+set.seed(101)
+data("Boston", package="MASS")
+Boston %>% str # ?Boston # to see more data info. it's housing values in Boston suburbs.
+
+train <- 1:nrow(Boston) %>% sample(300)
+
+boost.boston <-
+  gbm::gbm(medv ~ .,
+      data = Boston[train,],
+      distribution = "gaussian",
+      n.trees = 10000,
+      shrinkage = 0.01,
+      interaction.depth = 4)
+boost.boston %>% summary # gives variance importance plot.
+
+```
+
+variables lstat (lower status) and rm (rooms) are impacting the most.
+
+```{r}
+
+boost.boston %>% plot(i = "lstat") # partical dependency plot for the two most important plots.
+boost.boston %>% plot(i = "rm")
+
+n.trees <-
+  seq(from = 100,
+      to = 10000,
+      by = 100)
+testData <- Boston[-train, ]
+predmat <-
+  predict(boost.boston,
+          newdata = testData,
+          n.trees = n.trees)
+predmat %>% dim
+berr <-
+  with(testData,
+       apply((predmat - medv)^2, 2, mean))
+plot(n.trees,
+     berr,
+     pch = 19,
+     ylab = "Mean Squared Error",
+     xlab = "# Trees",
+     main = "Boosting Test Error")
+```
+
+From the RF w/o boosting.
+Run that example first if you want to compare the boost vs non-boost results.
+
+```{r "boosting plot: doesn't work", eval = FALSE}
+
+abline(h = min(errors$test),
+       col="red")
+```
+
+#### Classification
+
+```{r}
+
+set.seed(101)
+trainObservations <- sample(1:nrow(iris), 75)
+testData <- iris[-trainObservations, ]
+
+( fit <-
+	gbm::gbm(Species~.,
+			data=iris[trainObservations, ],
+			distribution="multinomial"))
+nTrees <- 4^(1:3)
+
+predictions <-
+  predict(fit,
+          newdata = testData,
+          n.trees = nTrees)
+
+( classifiationTables <-
+  sapply(nTrees %>% as.character,
+         function(treeSize){
+           ( predictions[,,treeSize]
+             %>% apply(1, which.max)
+             %>% factor(labels = predictions %>% dimnames %>% .[[2]])
+             %>% table(testData$Species)
+            )
+         }, simplify = FALSE))
+
+```
+
+prediction accuracy
+
+```{r}
+
+( classifiationTables
+  %>% sapply(function(tbl)
+             tbl %>% diag %>% sum %>% magrittr::divide_by(tbl %>% sum))
+ )
+
+```
+
+only thing required for one n.trees
+
+```{r, eval =FALSE}
+
+(
+  predictions
+  %>% apply(1, which.max)
+  %>% factor(labels = predictions %>% dimnames %>% .[[2]])
+  %>% table(testData$Species)
+ )
+
+```
+

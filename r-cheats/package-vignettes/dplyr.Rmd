@@ -1,0 +1,149 @@
+## dplyr
+
+### Overview
+
+Section for dplyr basics and qwirks
+
+### programming
+
+evaluating variable names and values. This is for dplyr 6.0+
+
+```{r "dplyr programming"}
+
+dta <- data.frame(
+   v1 = sample(5,10, replace = TRUE)
+  ,v2 = sample(5,10, replace = TRUE)
+)
+
+```
+
+dplyr filter is a little bit qwirkier.
+
+Note the parentheses around the quo eval, it's required in this situation.
+
+```{r}
+
+myVar <- rlang::quo(v1)
+dta %>% dplyr::filter((!!myVar) == 1)
+
+```
+
+while not required in this situation
+
+```{r}
+
+myVal <- 1
+dta %>% dplyr::filter(v1 == !!myVal)
+
+```
+
+not that col is a string / character
+
+```{r}
+
+which_col <- "v1"
+which_val <- 1
+
+dta %>% dplyr::filter((!!rlang::sym(which_col))==which_val)
+
+```
+
+OR
+
+```{r}
+
+dta %>% dplyr::filter(UQ(rlang::sym(which_col))==which_val)
+
+```
+
+old syntax still works
+
+```{r}
+
+dta %>% dplyr::filter_(.dots= paste0(which_col, "== ", which_val))
+
+```
+
+### subsetting rows
+
+observations
+
+```{r "dplyr filter"}
+dplyr::filter(iris, Sepal.Length > 7)
+```
+
+remove duplicate rows
+
+```{r "dplyr distinct"}
+iris %>% str
+dplyr::distinct(iris) %>% str
+```
+
+Randomly select fraction of rows.
+
+```{r "dplyr sample_frac"}
+dplyr::sample_frac(iris, 0.05, replace = TRUE)
+```
+
+Randomly select n rows.
+
+```{r "dplyr sample_n"}
+dplyr::sample_n(iris, 10, replace = TRUE)
+```
+
+Select rows by position.
+
+```{r "dplyr slice"}
+dplyr::slice(iris, 10:15)
+```
+
+Select top n rows based on some column
+
+```{r "dplyr top_n"}
+CO2 %>% top_n(2, uptake)  # select top 2 observations with highest uptake
+CO2 %>% top_n(2, conc)    # conc has a lot of ties
+CO2 %>% top_n(2, -uptake) # select top 2 observations with LOWest uptake
+```
+
+### selects
+
+- different ways of using `dplyr::select`
+- use array with `one_of` to select columns from data frame
+
+```{r}
+library(magrittr); library(dplyr)
+airquality %>% head %>% select(Temp, Wind)
+airquality %>% head %>% select_("Temp", "Wind")
+var1 <- "Temp"; var2 <- "Wind"
+airquality %>% head %>% select_(var1, var2)
+
+wordArray <- function(string){ string %>% strsplit("[[:space:]]+") %>% unlist }
+columns <- "Temp Wind" %>% wordArray
+airquality %>% head %>% select(one_of(columns))
+# airquality %>% head %>% select_(one_of(columns)) # ERRORS: can not find function `one_of`
+```
+
+### filter
+
+If you get weird time-series results then standard library `filter` is most likely first in the namespace.
+
+Use `%in%` or `is_in` for filtering on multiple items.
+
+```{r}
+library(dplyr)
+set.seed(12)
+threshold <- 0.7
+dts <- data.frame(a1 = runif(20) %>% round(1), b1 = runif(20) %>% round(1))
+dts %<>% mutate(b1Lvl = b1 %>% cut(breaks =c(0, threshold, 1), include.lowest = TRUE, labels = c("low", "high")) )
+
+dts %>% filter(a1 %>% is_in(c(0, 0.2)))
+dts %>% filter(a1 %in% c(0, 0.2))
+
+dts %>% filter_("b1 > .7")
+dts %>% filter_(paste("b1 >", threshold))
+dts %>% filter_("b1Lvl == 'high'")
+asQuoted <- function(arg) paste0("'", arg, "'")
+b1Level <- "high"
+dts %>% filter_(paste("b1Lvl == ", b1Level %>% asQuoted))
+```
+

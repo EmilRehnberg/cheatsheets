@@ -1,0 +1,193 @@
+## Overview
+
+Section for R-language design and concepts. Packages, code, data loading
+
+## loading / unloading packages
+
+in order to attach / load / require packages use `library` (or `require` if you like problems).
+
+to detach / unload / remove a package from a session you can use `detach`
+
+```{r}
+exists("is_in") # from magrittr package
+detach(package:magrittr)
+exists("is_in")
+library(magrittr)
+exists("is_in")
+```
+
+## error handling
+
+use `tryCatch`
+
+with error handler
+
+```{r "error / exception handling", echo = TRUE}
+
+library(magrittr)
+myError <- simpleError("エッラー！")
+
+tryCatch({
+  print(1);
+  stop(myError)
+  print(2)
+}, error = function(err){
+  message("error function messages:")
+  (err %>% print)
+}, finally = {
+  print("always finish run with finally()")
+  message("finished tryCatch")
+})
+
+```
+
+with warning handler
+
+```{r}
+
+tryCatch({
+  print(1)
+  warning("ACHTUNG! ACHTUNG!")
+  print(2)
+}, warning = function(war){
+  message("warning function messages:")
+  (war %>% print)
+}, finally = {
+  print("always finish run with finally()")
+  message("finished tryCatch")
+})
+
+```
+
+`stop` returns exit code 1 (check with `$?` in ruby and `$?.exitstatus` especially)
+
+you can also use the `tools` package. but `pskill` does not returns a 0 exit status. `pskill` seems to be rather rough around the edges, use with care.
+
+```{r}
+# tools::pskill(Sys.getpid(), tools::SIGINT)
+```
+
+## Control Flow
+
+E.g. if / else statements
+
+```{r "control flow, all the below can be parsed"}
+
+if(1 == 2)
+  print("1 == 2") else
+if(2 == 2)
+  print("2 == 2") else
+  print("ALL FALSE")
+
+if(1 == 2) {
+  print("1 == 2")
+} else if(2 == 2) {
+    print("2 == 2")
+  } else {
+    print("ALL FALSE")
+  }
+
+if(1 == 2) {
+  print("1 == 2")
+} else {
+  if(2 == 2) {
+    print("2 == 2")
+  } else {
+    print("ALL FALSE")
+  }
+}
+
+```
+
+## ellipsis
+
+`...` / ellipsis or "dot-dot-dot"
+
+use an arbitrary number of arguments to a function
+
+```{r}
+a <- c(1,  2,  NA, 4, NA)
+b <- c(NA, NA, NA, 5, 6)
+c <- c(7,  8,  NA, 9, 10)
+```
+
+catch the arguments in a list
+
+```{r}
+elTrail1 <- function(...) list(...)
+```
+catch the arguments in a data frame
+
+```{r}
+elTrail2 <- function(...) data.frame(...)
+```
+
+extract the first argument
+
+```{r}
+elTrail3 <- function(...) ..1
+```
+
+extract the second argument
+
+```{r}
+elTrail4 <- function(...) ..2
+```
+
+## Environments
+
+```{r}
+exists("abc")
+abc <- 2
+exists("abc")
+exists("pi", envir = emptyenv())
+exists("glm", envir = as.environment("package:base"))
+exists("glm", envir = as.environment("package:stats"))
+```
+
+## dump object to executable R code
+
+`dput` is your friend. NOTE: not suitable for S4 objects. try `writeRDS` or `save` for that.
+
+there's some gotchas though. When you're dumping a factor - the output might end up crazy long. Use `as.character` to get what you're looking for.
+
+```{r "dput gotcha"}
+library(dplyr)
+(USArrests %<>% mutate(state = USArrests %>% row.names %>% as.factor)) %>% str
+USArrests$state %>% head(2) %>% dput
+USArrests$state %>% head(2) %>% as.character %>% dput
+```
+
+## parse CL args
+
+parsing command line arguments / parameters
+
+- use `#!/usr/bin/env Rscript` on top of the executable file (`tca.r` let's say)
+- call `./tca.r --args a=1 name=\'Billy\'`
+- use the `commandArgs`, `parse` and `eval` functions to read the parameters into your script
+- sometimes if `trailingOnly` is set, `--args` is still in there
+
+```{r "commandArgs"}
+library(magrittr)
+arguments <- c("a=1", "name=\'Billy\'") # commandArgs(trailingOnly = TRUE)
+for(argument in arguments){
+  eval(parse(text = argument))
+}
+```
+
+into a `data.frame`. This works but then all columns are strings
+
+```{r "command line arguments into data.frame"}
+arguments %>% strsplit("=") %>% sapply(function(strings) purrr::set_names(strings[2], strings[1]) )
+```
+
+use `jsonlite` instead by sending in JSON data. E.g. executing:
+`./predict-co2uptake '[{"Type": "Quebec", "Treatment": "nonchilled", "conc": 350}]'`
+on the command line
+
+```{r "command line arguments into data.frame using jsonlite"}
+jsonlite::fromJSON('[{"Type": "Quebec", "Treatment": "nonchilled", "conc": 350}]') %>% str
+```
+
+```{r object-system, child="object-system.Rmd"}
+```

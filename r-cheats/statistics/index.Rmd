@@ -1,0 +1,289 @@
+
+## Overview
+
+Section for statistics. Distributions, testing etc.
+
+## quantiles
+
+quantiles for different probabilities, use `stats:quantile`
+
+```{r "quantile"}
+
+randomNormals <- rnorm(1001)
+randomNormals %>% quantile
+randomNormals %>% quantile(.4)
+randomNormals %>% quantile(probs = c(.1, .5, 1, 2, 5, 10, 50, NA)/ 100)
+
+```
+
+## Distributions
+
+### Overview
+
+Section for probability distributions, e.g. Normal/Gaussian, Binomial, Beta
+
+### Shapes
+
+Randomize from distributions and introduce shapes.
+
+Skewness
+
+```{r "skewness-randomize"}
+```
+
+Kurtosis
+
+```{r "kurtosis-randomize"}
+```
+
+### Beta distribution
+
+- Typically used to model probabilities.
+- Conjugate Prior to a Binomial distribution.
+- Say that we are modelling a baseball batter
+  - alpha parameter can be interpreted as number of hits
+  - beta parameter can be interpreted as number of misses
+- Ref: [wiki](https://en.wikipedia.org/wiki/Beta_distribution)
+
+Let's look at a Beta distribution with alpha = 81 and beta = 219.
+
+```{r}
+
+alpha0 <- 81
+beta0 <- 219
+
+qbeta(.5, alpha0, beta0)
+alpha0 / (alpha0 + beta0) # mean for this probability
+
+```
+
+standard beta distribution function. shape1/2 being alpha/beta.
+
+```{r, eval = FALSE}
+dbeta(x, shape1, shape2, ncp = 0, log = FALSE)
+pbeta(q, shape1, shape2, ncp = 0, lower.tail = TRUE, log.p = FALSE)
+qbeta(p, shape1, shape2, ncp = 0, lower.tail = TRUE, log.p = FALSE)
+rbeta(n, shape1, shape2, ncp = 0)
+```
+
+- `dbeta` - returns density. high values for `x` close to the mean. E.g. usable for plotting the distribution.
+- `qbeta` - returns quantile. E.g. 0.5 quantile is the mean.
+- `pbeta` - returns probability. E.g. the probability of hitting 0.25 or less is 22% but ~88% to be under 0.33 (obviously this is pure theory for a probability in a one event trial)
+- `rbeta` - returns random variables outcomes from a Beta(alpha0, beta0)
+
+```{r}
+
+n <- 21
+x <- seq(0, 1, length = n)
+data.frame(x
+           ,d = dbeta(x, alpha0, beta0)
+           ,quantile = qbeta(x, alpha0, beta0) # cumulative quantile of attaning probability x
+           ,prob = pbeta(x, alpha0, beta0) # cumulative probability of attaning quantile x
+           ,random = rbeta(n, alpha0, beta0) # random outcomes of n beta distributions with alpha0/beta0
+           ) %>% round(3)
+
+```
+
+Bayesian setting. New data comes in.
+
+- The batter has 100 more hits and out of 300 tries.
+- update in bayesian way using bayes rule
+  - Likelihood follows a Binomial distribution.
+  - The posterior is another Beta with new alpha and beta.
+
+```{r}
+
+alpha1 <- alpha0 + 100 # add the hits
+beta1 <- beta0 + 300 - 100 # add the misses
+
+data.frame(x
+           ,q0 = qbeta(x, alpha0, beta0)
+           ,q1 = qbeta(x, alpha1, beta1)
+           )
+
+```
+
+Plotting this distributions
+
+```{r}
+
+library(ggplot2)
+
+sim <- data.frame(a = c(81, 81 + 100),
+                  b = c(219, 219 + 200)) %>%
+  dplyr::group_by(a, b) %>%
+  dplyr::do(dplyr::data_frame(x = seq(0, 1, .001), y = dbeta(x, .$a, .$b))) %>%
+  dplyr::mutate(Parameters = paste0("\u03B1 = ", a, ", \u03B2 = ", b)) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(Parameters = factor(Parameters, levels = unique(Parameters)))
+
+sim %>% dplyr::filter(a == 81) %>%
+  ggplot(aes(x, y, color = Parameters)) + geom_line() +
+  xlim(0, .5) + ylab("Density of beta")
+
+sim %>%
+  ggplot(aes(x, y, color = Parameters)) + geom_line() +
+  xlim(0, .5) + ylab("Density of beta")
+
+```
+
+
+## Statistical Tests
+
+### Overview
+
+Section for test. Parametric and non-paratmetric.
+
+### Mann-Whitney-Wilcoxon Test
+
+In statistics, the Mann-Whitney U test (also called the Mann-Whitney-Wilcoxon (MWW), Wilcoxon rank-sum test, or Wilcoxon-Mann–Whitney test) is a nonparametric test of the null hypothesis that two samples come from the same population against an alternative hypothesis, especially that a particular population tends to have larger values than the other.[@wikiMannWhitneyUTest]
+
+Unlike the t-test it does not require the assumption of normal distributions. It is nearly as efficient as the t-test on normal distributions.[@wikiMannWhitneyUTest]
+
+Use the Wilcoxon signed-rank test when samples are related / paired.
+
+Example code [@wilcoxTest]
+
+Two-sample test.
+
+```{r}
+library(graphics)
+x <- c(0.80, 0.83, 1.89, 1.04, 1.45, 1.38, 1.91, 1.64, 0.73, 1.46)
+y <- c(1.15, 0.88, 0.90, 0.74, 1.21)
+wilcox.test(x, y, alternative = "greater")
+wilcox.test(x, y, alternative = "greater",
+            exact = FALSE, correct = FALSE) # H&W large sample approximation
+
+wilcox.test(rnorm(10), rnorm(10, 2), conf.int = TRUE)
+
+```
+
+Formula interface.
+
+```{r}
+
+boxplot(Ozone ~ Month, data = airquality)
+wilcox.test(Ozone ~ Month, data = airquality,
+            subset = Month %in% c(5, 8))
+
+```
+
+### Wilcoxon signed-rank test
+
+The Wilcoxon signed-rank test is a non-parametric statistical hypothesis test used when comparing two related samples, matched samples, or repeated measurements on a single sample to assess whether their population mean ranks differ (i.e. it is a paired difference test). It can be used as an alternative to the paired Student's t-test, t-test for matched pairs, or the t-test for dependent samples when the population cannot be assumed to be normally distributed. [@lowry11]
+
+Example code [@wilcoxTest], [@rTutorWilcoxonSignedRankTest]
+
+```{r}
+x <- c(1.83,  0.50,  1.62,  2.48, 1.68, 1.88, 1.55, 3.06, 1.30)
+y <- c(0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29)
+
+wilcox.test(x, y, paired = TRUE, alternative = "greater")
+```
+
+One-sample test version.
+
+```{r }
+wilcox.test(y - x, alternative = "less",
+            exact = FALSE, correct = FALSE) # H&W large sample approximation
+
+library(MASS)
+wilcox.test(immer$Y1, immer$Y2, paired=TRUE)
+```
+
+### Contingency table test
+
+look into the `stats` cheatsheet for usage of these tests.
+
+example data
+
+```{r "data for contingency tables test"}
+library(magrittr)
+partyGenderTable <-
+  structure( c(762, 484, 327, 239, 468, 477)
+            ,.Dim = 2:3
+            ,.Dimnames = structure(list( gender = c("F", "M")
+                                        ,party = c("Democrat", "Independent", "Republican"))
+            ,.Names = c("gender", "party"))
+            ,class = "table")
+
+set.seed(12)
+experimentDt <-
+  data.frame( exposure = gl(2, 20, labels = c("Control", "Treatment"))
+             ,outcome = gl(2, 20, labels = c("Sick", "Healhty")) %>% sample(replace = TRUE)
+             )
+```
+
+#### Pearson chi-square test
+
+can be applied to tables.
+
+```{r}
+(XsqTest <- partyGenderTable %>% chisq.test)
+XsqTest$observed   # observed counts (same as M)
+XsqTest$expected   # expected counts under the null
+XsqTest$residuals  # Pearson residuals
+XsqTest$stdres     # standardized residuals
+```
+
+or to variables directly.
+
+```{r}
+with(experimentDt, { chisq.test(exposure, outcome) })
+```
+
+#### Fisher's exact test
+
+use function `fisher.test` and apply similar to `chisq.test`.
+
+#### McNemar's test
+
+for paired observations. use function `mcnemar.test`.
+
+```{r "McNemars test"}
+(Performance <-
+  matrix(c(794, 86, 150, 570),
+         nrow = 2,
+         dimnames = list("1st Survey" = c("Approve", "Disapprove"),
+                         "2nd Survey" = c("Approve", "Disapprove")))
+ )
+
+Performance %>% mcnemar.test
+```
+
+Here there's a significant difference in the approval from the 1st to the 2nd survey.
+
+### ANOVA
+
+```{r "ANOVA and Tukey HSD pairwise comparisons"}
+library(magrittr)
+warpbreaks %T>%
+  { message("Data Summary"); print(summary(.)); message() } %>%
+  aov(breaks ~ wool + tension, data = .) %T>%
+  { message("ANOVA Summary"); print(summary(.)); message(); message("Pairwise comparisons") } %>%
+  TukeyHSD("tension", ordered = TRUE)
+```
+
+## Supervised
+
+```{r Supervised, child="supervised.Rmd", cache=FALSE}
+```
+
+## Unsupervised
+
+```{r Unsupervised, child="unsupervised.Rmd", cache=FALSE}
+```
+
+## Forecasting
+
+```{r, echo=FALSE}
+knitr::read_chunk("../package-demos/forecast.R")
+```
+
+```{r forecast-pkg-demo}
+```
+
+## Neural Nets
+
+```{r NNs, child="neural-nets.Rmd", cache=FALSE, eval=TRUE}
+```

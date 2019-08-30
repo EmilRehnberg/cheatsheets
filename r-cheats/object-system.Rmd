@@ -1,0 +1,136 @@
+## Object system
+
+### Overview
+
+R has a S3 and S4 Object system. S3 is preferred using polymorphism.
+Ref: [adv-R](http://adv-r.had.co.nz/OO-essentials.html)
+
+### Base types
+
+R "base types" are like a C struct, has 1) object contents and 2) a type. This is not an object system as you can't add objects to it.
+
+```{r, eval=FALSE}
+
+f <- function() NULL
+typeof(f) # [1] "closure"
+is.function(f)
+
+typeof(sum) # [1] "builtin" # for primitive functions
+is.primitive(sum)
+
+```
+
+use `pryr::otype` to understand what kind of system an object follows
+
+```{r, eval=FALSE}
+
+pryr::otype(character()) # [1] "base"
+pryr::otype(integer()) # [1] "base"
+pryr::otype(numeric()) # [1] "base"
+
+pryr::otype(matrix()) # [1] "base"
+pryr::otype(list()) # [1] "base"
+pryr::otype(c()) # [1] "base"
+
+pryr::otype(factor()) # [1] "S3"
+pryr::otype(ts()) # [1] "S3"
+pryr::otype(data.frame()) # [1] "S3"
+as.Date("1999-01-01") %>% pryr::otype() # [1] "S3"
+
+df <- data.frame(x = 1:5, y = LETTERS[1:5])
+pryr::otype(df)
+pryr::otype(df$x)
+pryr::otype(df$y) # factors are S3
+
+pryr::otype(mean)
+
+```
+
+use `pryr::ftype`
+
+```{r}
+
+pryr::ftype(`%in%`)
+pryr::ftype(sum)
+pryr::ftype(t.data.frame)
+pryr::ftype(t.test) # Tricky!
+pryr::ftype(writeLines)
+pryr::ftype(unlist)
+
+pryr::ftype(mean)
+methods(mean)
+pryr::ftype(mean.Date)
+
+```
+
+
+### S3
+
+#### methods
+
+- query all methods for a S3 generic function
+- query all methods S3 function available for a class
+
+```{r, ""}
+
+pryr::ftype(mean)
+methods(mean)
+methods(class = "Date")
+
+```
+
+
+#### generic function "UseMethod"
+
+TODO: add example where you pass more arguments
+
+base for `R`'s S3 object system using polymorphism, switching function (function / method dispatch) on the class of the called object.
+
+```{r, "UseMethod"}
+
+asEmpty <- function(object) UseMethod("asEmpty")
+asEmpty.integer <- function(object) integer(0)
+asEmpty.character <- function(object) character(0)
+
+methods(asEmpty)
+
+1:3 %>% asEmpty
+letters %>% asEmpty
+
+```
+
+#### constructor function
+
+example. think the factor and `data.frame` functions
+
+```{r}
+
+foo <- function(x) {
+  if (!is.numeric(x)) stop("X must be numeric")
+  structure(list(x), class = "foo")
+  }
+
+```
+
+#### Use-case
+
+adding custom classes to objects and using polymorphism
+
+```{r}
+
+mkNameFeatures <- function(obj) UseMethod("mkNameFeatures")
+mkNameFeatures.se <- function(names) data.frame(name = names, namesCount = names %>% strsplit(" ") %>% purrr::map_dbl(length))
+mkNameFeatures.ja <- function(names) data.frame(name = names, hasSpace = names %>% grepl(pattern = " ") )
+
+initClass <- function(obj, cls) obj %>% structure(class = cls %>% append(class(obj)) %>% unique)
+
+jaNames <- c("田中角栄", "杉本 レイ", "上杉謙信") %>% initClass("ja")
+seNames <- c("Emil Erik Alexis Rehnberg", "stella", "balle AF raggare") %>% initClass("se")
+
+jaNames %>% mkNameFeatures
+seNames %>% mkNameFeatures
+
+jaNames %>% mkNameFeatures %>% initClass("ja")
+
+```
+

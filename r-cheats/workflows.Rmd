@@ -1,0 +1,207 @@
+### Logging
+
+#### Overview
+
+Section for understanding logging and directing output streams.
+
+defaults:
+
+```{r "default direction"}
+1:2 # goes to stdout()
+message("messaging") # goes to stderr()
+warning("warning") # goes to stderr()
+```
+
+to redirect message to standard output stream
+
+```{r "redirect message to stdout", eval = FALSE}
+message("more messaging") # going to stderr()
+sink(stdout(), type = "message")
+message("messaging to std out!") # goes to stdout()
+```
+
+redirecting regular output to standard error
+
+```{r "redirecting output stderr", eval = FALSE}
+1:2 # to stdout()
+sink(stderr(), type = "output")
+3:4 # to stderr()
+```
+
+#### redirecting IO
+
+all IO, stdout, stderr and warnings are sent to standard output stream.
+
+start with `#!/bin/usr/env Rscript`
+
+```{r, eval = FALSE}
+sink(stdout(), type="message") # MAIN command for redirection
+message("message: testing 12")
+warning("achtung: deutchen furher")
+error("E$ failure") # doesn't work, using `stop` if you want to send error messages and stop the execution.
+```
+
+[source](http://mazamascience.com/WorkingWithData/?p=888)
+
+### variable relations
+
+#### Overview
+
+Section for investigating relations between variables
+
+See plots section for pairwise correlation plots.
+
+#### pairwise correlations
+
+`stats::cor `
+
+only works on numerical variables
+
+```{r stats_cor_pairwise}
+cor(airquality[,c("Ozone", "Wind", "Temp")],
+    use = "complete")
+```
+
+#### descriptives over strata
+
+stratum / labels / levels
+
+```{r strata_descriptives}
+with(CO2, {
+  aggregate(uptake
+            ,by = list(Type = Type, Treatment = Treatment)
+            ,FUN = summary)
+})
+
+with(CO2, {
+  aggregate(CO2[,c("uptake", "conc")]
+            ,by = list(Type = Type, Treatment = Treatment)
+            ,FUN = median)
+})
+```
+
+`dplyr` version might be more performant for single values, but you can't use `summary` like above.
+
+```{r strata_descriptives_dplyr}
+library(dplyr)
+( CO2
+  %>% group_by(Type, Treatment)
+  %>% summarise(uptakeMean = mean(uptake), updateMedian = median(uptake), concMean = mean(conc))
+  )
+```
+
+#### fill out missing combinations / gaps
+
+if there's gaps in the data where there should data, maybe 0 data, you can join in a dataset with full combinations.
+
+```{r}
+library(dplyr)
+incompleteDt <-
+  data.frame( cdate = c(201609, 201610, 201610, 201611, 201612, 201612)
+             ,status = c("Bad", "OK", "Bad", "OK", "OK", "Bad")
+             ,metric = c(runif(6)))
+completeLabels <- expand.grid(cdate = c(201609, 201610, 201611, 201612), status = c("Bad", "OK"))
+incompleteDt %>% right_join(completeLabels) %>% mutate(metric = ifelse(is.na(metric), 0, metric))
+```
+
+#### clustering with mixed variable types
+
+taken from [article](https://www.r-bloggers.com/clustering-mixed-data-types-in-r/)
+
+```{r}
+library(ISLR)
+College %>% str
+```
+
+### A/B testing
+
+#### Overview
+
+Section for A/B testing workflow
+
+#### Bayesian A/B testing
+
+main function is th `bayesTest` function. Which takes two samples (A and B), conjugate prior parameters (see `?bayesTest` for expected named vectors of parameters) and the distribution for likelihood.
+
+```{r "plots setup"}
+opar <- par(mfrow = c(2, 2))
+```
+
+##### with Bernoulli posterior
+
+```{r, "bayesAB installation", eval = FALSE}
+
+devtools::install_github("cran/bayesAB")
+
+```
+
+```{r "bayesAB package Bernoulli posterior"}
+
+nSamples <- 250
+A_binom <- rbinom(nSamples, size = 1, prob = .25) # size = 1 makes sure it's a bernoulli trial, so the outcome is either 0 or 1
+B_binom <- rbinom(nSamples, size = 1, prob = .2)
+
+```
+
+- let's ignore that we know the samples in this case
+- we know the Bernoulli distribution probability is ~0.2-0.3.
+- with this in mind, we want prior parameters for a Beta that roughly matces these (Beta dist is conjugate prior to Binomial)
+
+```{r}
+
+bayesAB::plotBeta(100, 200) # looks a little off
+bayesAB::plotBeta(65, 200) # looks way better
+
+(AB1 <-
+  bayesAB::bayesTest( A_binom
+                     ,B_binom
+                     ,priors = c('alpha' = 65, 'beta' = 200) # params for a Beta (conjugate to Binomial)
+                     ,distribution = 'bernoulli'
+                     ))
+AB1 %>% summary
+AB1 %>% plot
+
+```
+
+##### with Poisson posterior
+
+```{r "bayesAB package Poisson posterior"}
+
+A_pois <- rpois(nSamples, 6.5)
+B_pois <- rpois(nSamples, 5.5)
+
+bayesAB::plotGamma(30, 5) # 5-7 seem likely enough
+
+(AB2 <-
+  bayesAB::bayesTest( A_pois
+                     ,B_pois
+                     ,priors = c(shape = 30, rate = 5)
+                     ,distribution = 'poisson'
+                     ))
+AB2 %>% summary
+AB2 %>% plot
+
+```
+
+##### combining distribution
+
+The combination here refers to combining the events in the Bernoulli and Poisson examples. The example being the first example is the click-through event and the second one being the number of clicks on the page. But the second example is based on the situation that the lead is already on the page. What about the expected number of clicks from the get-go? Then you'd have to combine the first and second example somehow and luckily `bayesAB::combine` does this.
+
+```{r "bayesAB::combine"}
+(AB3 <-
+  bayesAB::combine( AB1
+                   ,AB2
+                   ,f = multiply_by
+                   ,params = c('Probability', 'Lambda') # the kind of parameters for the posteriors in AB1/2
+                   ,newName = 'Expectation'
+                   )
+ )
+AB3 %>% summary # note the lower expecations on clicks here
+AB3 %>% plot
+```
+
+```{r "finish plot"}
+par(opar)
+```
+
+

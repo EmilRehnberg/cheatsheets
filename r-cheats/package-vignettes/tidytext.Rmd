@@ -1,0 +1,44 @@
+## tidytext
+
+```{r "installing tidytext", eval = FALSE}
+
+paste0("cran/",
+       c("hunspell", "mnormt", "psych", "RWekajars", "RWeka", "Snowball", "SnowballC", "tokenizers"
+         ,"janeaustenr", "ISOcodes", "stopwords")) %>%
+  c(.,"tidyverse/broom", "juliasilge/tidytext") %>%
+  (devtools::install_github)
+
+```
+
+Small example working with text data. In this case Jane Austin books.
+
+add row and chapter numbers.
+
+```{r "small example of working with text data"}
+
+janeaustenr::austen_books() %>% str
+
+(crudeBooks <-
+  janeaustenr::austen_books() %>%
+    dplyr::group_by(book) %>%
+    dplyr::mutate(
+      line = row_number()
+      ,chapter =
+        cumsum(stringr::str_detect(text, stringr::regex("^chapter [\\divxlc]", ignore_case = TRUE)))
+     ) %>%
+    (dplyr::ungroup)
+)
+
+```
+
+### Tokenize your data
+
+restructure data as *one-token-per-row* instead.
+
+```{r "tidytext::unnest_tokens"}
+
+(books <- crudeBooks %>% tidytext::unnest_tokens(word, text))
+
+```
+
+

@@ -1,0 +1,13 @@
+html {
+  filter: invert(100%);
+}
+body {
+  background-color: black;
+}
+img {
+  opacity: .75;
+  transition: opacity .5s ease-in-out;
+}
+img:hover {
+  opacity: 1;
+}

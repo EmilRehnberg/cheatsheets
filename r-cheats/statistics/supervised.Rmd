@@ -1,0 +1,251 @@
+### Notations {#supervised-notations}
+
+- $p$ number of variables / parameters to fit
+- $m$ number of variable to try each split (Random Forest)
+
+### Model selection
+
+Linear regression. BSS - Best subset selection
+
+```{r leaps installation, eval = FALSE}
+devtools::install_github("cran/leaps")
+```
+
+```{r leaps regsubsets}
+library(magrittr)
+data(Hitters, package="ISLR")
+
+Hitters %>% summary
+Hitters %<>% na.omit
+regfit.full <- leaps::regsubsets(Salary ~ ., data = Hitters)
+reg.summary <- regfit.full %>% summary
+reg.summary %>% names
+
+summariseRegsubset <- function(regsubset, icLabel){
+  ic <- regsubset %>% summary %>% .[[icLabel]]
+  plot(ic, xlab = "#features", ylab = icLabel)
+  points(ic %>% which.min, ic %>% min, pch = 20, col = "red")
+  coef(regsubset, ic %>% which.min)
+}
+
+"Mallow's CP" %>% message
+reg.summary$cp
+summariseRegsubset(regfit.full, "cp")
+plot(regfit.full, scale = "Cp") # see ?leaps::plot.regsubsets for more scale options "r2", "adjr2" and "bic" are also available
+
+"BIC" %>% message
+reg.summary$bic
+
+summariseRegsubset(regfit.full, "bic")
+```
+
+Forward / Backward selection
+
+```{r "leabs forward / backward selection with leaps", eval = FALSE}
+
+regfitFwd <- leaps::regsubsets(Salary ~ ., data = Hitters, method = "forward")
+summariseRegsubset(regfitFwd, "bic")
+plot(regfitFwd, scale = "bic")
+
+regfitBwd <- leaps::regsubsets(Salary ~ ., data = Hitters, method = "backward")
+summariseRegsubset(regfitBwd, "bic")
+plot(regfitBwd, scale = "Cp")
+
+```
+
+GLM using `bestglm`
+
+### Logistic Regression
+
+```{r "install ROCR", eval = FALSE}
+
+dependencies <- c("gplots", "rocr")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
+```
+
+In R, `glm` with `family` set is how logistic regression is implemented.
+
+```{r "logistic regression"}
+logRegMod <-
+  glm(wool ~ .,
+      data = warpbreaks,
+      family = binomial(link = "logit"))
+
+logRegMod %>% summary
+
+```
+
+calculate model BIC
+
+```{r "bic calc"}
+
+BIC <- function(model, nSamples) model %>% AIC(k = log(nSamples))
+BIC(logRegMod, warpbreaks %>% nrow)
+
+```
+
+ROC
+
+```{r , "log reg ROC"}
+
+logRegMod %>% fitted %>%
+  ROCR::prediction(warpbreaks$wool) %>%
+  ROCR::performance(measure = "tpr",
+                    x.measure = "fpr") %>%
+  (ROCR::plot)
+
+```
+
+### GLM gotcha
+
+with variables that has too many labels compared to data observations (i.e. we have no DF)
+
+```
+>     glm(poisson2 ~.
++         ,data = strata %>% toStrataTrainingDta(outcomeVar = "poisson2")
++         ,family = "poisson")
+Error: inner loop 1; cannot correct step size
+In addition: Warning message:
+step size truncated due to divergence
+```
+
+### Negative Binomial
+
+with GLM
+
+```{r, "negative binomial example"}
+data(quine, package = "MASS")
+quine %>% str
+quine.nb1 <- MASS::glm.nb(Days ~ Sex/(Age + Eth*Lrn), data = quine)
+quine.nb2 <- update(quine.nb1, . ~ . + Sex:Age:Lrn)
+quine.nb3 <- update(quine.nb2, Days ~ .^4)
+anova(quine.nb1, quine.nb2, quine.nb3)
+quine.nb1 %>% summary
+```
+
+### SVM
+
+```{r "e1071 installation", eval = FALSE}
+devtools::install_github("cran/e1071")
+```
+
+
+```{r "svm basic example"}
+
+model <- e1071::svm(Species ~ ., data = iris, probability = TRUE)
+summary(model)
+
+```
+
+model fitted vs real value (no CV, cheating of course)
+
+```{r}
+
+fitted(model) %>% table(iris$Species)
+
+```
+
+obtain label probabilities for each observation
+
+```{r}
+newObservations <- subset(iris %>% head, select = -Species)
+predict(model, newObservations, decision.values = TRUE, probability = TRUE)
+```
+
+### recursive partitioning
+
+#### CART
+
+clustering with CART. see `ggdendro` for plotting with `ggplot2`
+
+```{r "rpart"}
+library(rpart)
+rpart(Kyphosis ~ Age + Number + Start
+      ,method = "class"
+      ,data = kyphosis) %T>% plot %>% text(use.n = TRUE)
+```
+
+#### Conditional inference trees
+
+```{r "conditional-inference-tree-section", child = "conditional-inference-trees.Rmd", eval = TRUE, cahce = FALSE}
+```
+
+### PLS - Partial Least Squares
+```{r}
+```
+
+### Random Forests
+
+```{r "random-forest-section", child = "random-forests.Rmd", eval = TRUE, cahce = FALSE}
+```
+
+### Boosting
+
+```{r "boosting-section", child = "boosting.Rmd", eval = TRUE, cahce = FALSE}
+```
+
+### HMM
+
+Hidden markov models. With `depmixS4` package
+
+```{r eval = FALSE}
+
+devtools::install_github(paste("cran", c("truncnorm", "Rsolnp", "depmixS4"), sep="/"))
+
+```
+
+data `speed` consists of three time series with three variables:
+
+1. response time `rt`
+2. accuracy `corr` (and previous `corr` in `prev`)
+3. covariate, `Pacc`, the relative pay-off for speeded versus accurate responding.
+
+```{r "simple depmix model"}
+
+data("speed", package = "depmixS4")
+speed %>% str
+speed$Pacc %>% table %>% as.matrix
+
+speedSimpleModel <- list(mixModel =
+  depmixS4::depmix(
+    response = rt ~ 1
+    ,data = speed
+    ,nstates = 2 # number of model states
+    ,trstart = runif(4) # transition parameters
+   )
+ )
+
+speedSimpleModel$fitted <- depmixS4::fit(speedSimpleModel$mixModel, emc = depmixS4::em.control(rand = FALSE))
+
+speedSimpleModel %>% print
+
+```
+
+Covariates on the transition probabilities
+
+```{r, "depmix with covariates in transitions"}
+
+speedTransCovarModel <- list(unfitted =
+  depmixS4::depmix(
+    response = rt ~ 1
+    ,data = speed
+    ,nstates = 2
+    ,family = gaussian()
+    ,transition = ~ scale(Pacc)
+    ,instart = runif(2)
+   )
+ )
+speedTransCovarModel$fitted <- depmixS4::fit(speedTransCovarModel$unfitted, emc = depmixS4::em.control(rand = FALSE) )
+
+```
+
+
+### Classification
+
+Other classification methods are e.g.
+
+- C4.5 (weka package?) can be used for classification with more labels
+    - categorical inputs splits in multiple nodes, one for each level value
+
+

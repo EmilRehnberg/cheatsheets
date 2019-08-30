@@ -1,0 +1,29 @@
+## XLConnect
+
+### Overview
+
+Section for XLConnect basic workflows.
+
+### installation
+
+```{r "install XLconnect", eval = FALSE}
+devtools::install_github('cran/xlconnectjars')
+devtools::install_github('cran/xlconnect')
+```
+
+### writing excel sheets
+
+```{r "writing xl sheets"}
+library(magrittr)
+library(XLConnect)
+irisTbl <-
+  iris %>% with({table(Petal.Width, Species)}) %>% as.data.frame
+wbPath <- "/tmp/ss.xlsx"
+wb <- loadWorkbook(wbPath, create = TRUE)
+wb %>% createSheet(name = "irisTable")
+wb %>% appendWorksheet(irisTbl, sheet = "irisTable")
+wb %>% saveWorkbook
+file.remove(wbPath)
+```
+
+

@@ -1,0 +1,188 @@
+
+### Overview
+
+methods for unsupervised learning.
+
+### PCA/PCR
+
+principal component analysis
+
+```{r "PCA USArrests"}
+
+USArrests %>% prcomp
+
+```
+
+prints standard deviations & loadings
+
+```{r}
+
+(usarrestsPcaFit <- USArrests %>% prcomp(scale=TRUE))
+usarrestsPcaFit %>% summary   # prints Importance of components
+usarrestsPcaFit %>% loadings  # prints loadings?
+usarrestsPcaFit$scores        # prints principal components
+usarrestsPcaFit %>% biplot    # plots a PC1/PC2 with loadings
+
+```
+
+using formula
+
+```{r}
+
+prcomp(~ Murder + Assault + Rape, data = USArrests, scale = TRUE)
+prcomp(~ ., data = USArrests, scale = TRUE)
+
+```
+
+only works with numerical variables
+
+```{r, eval = FALSE}
+prcomp(warpbreaks %>% dplyr::select(-breaks), scale = TRUE) # doesn't work
+```
+
+PCA components with color from factor variable.
+
+```{r "PCA iris"}
+prcompIris <- prcomp(iris %>% dplyr::select(-Species), scale = TRUE)
+prcompIris$x %>% as.data.frame %>%
+  ggplot2::ggplot(ggplot2::aes(x = PC1, y = PC2, color = iris$Species)) + ggplot2::geom_point()
+```
+
+to fortify these simple PCA plots look up [fortify PCA ploting](https://cran.r-project.org/web/packages/ggfortify/vignettes/plot_pca.html)
+
+### Factor Analysis
+
+Exploratory Factor Analysis
+
+[ref](https://www.statmethods.net/advstats/factor.html)
+
+```{r, "efa"}
+
+harmanFA <-
+  factanal(covmat = Harman74.cor
+           ,factors = 3
+           ,rotation = "varimax"
+           )
+
+harmanFA %>% print(digits = 2, cutoff = .3, sort = TRUE)
+
+firstLoadings <- harmanFA$loadings[,1:2]
+firstLoadings %>% plot(type = "n")
+firstLoadings %>% text(labels = Harman74.cor$cov %>% row.names, cex = .7)
+
+```
+
+
+### hierarchical clustering
+
+calculate a distance matrix and run it through `hclust`. The `hclust` object can be plotted through `graphics::plot`
+
+```{r "hierarchical clustering"}
+USArrests %>% dist %>% hclust("average") %>% plot
+USArrests %>% dist %>% hclust("complete") %>% plot(hang = -1)
+USArrests %>% dist %>% hclust(method = "average")
+USArrests %>% dist %>% hclust(method = "complete")
+```
+
+```{r "hclust plot w labels"}
+npk %>% dplyr::select(-block) %>% dist %>% hclust("complete") %>% plot(hang = -1)
+npk %>% dplyr::select(-block) %>% dist %>% hclust("complete") %>% plot(hang = -1, labels = npk$block)
+```
+
+prune tree, compare 2 and 4 group pruning
+
+```{r "simple prune tree"}
+USArrests %>% dist %>% hclust %>%
+  cutree(k = c(2,4)) %>% as.data.frame %>%
+  with({ table(get("2"), get("4")) })
+```
+
+1. Do centroid clustering and *squared* Euclidean distance,
+2. cut the tree into ten clusters
+3. reconstruct the upper part of the tree from the cluster centers.
+
+```{r "hclust cut tree example"}
+hc <- hclust(dist(USArrests)^2, "cen")
+memb <- cutree(hc, k = 10)
+cent <-
+  sapply(1:10, function(groupIndex){
+    colMeans(USArrests[memb == groupIndex, 1:4, drop = FALSE])
+   }, simplify = FALSE) %>%
+    Reduce(f = rbind) %>% as.matrix
+
+hc1 <- dist(cent)^2 %>% hclust(method = "cen", members = table(memb))
+opar <- par(mfrow = c(1, 2))
+plot(hc,  labels = FALSE, hang = -1, main = "Original Tree")
+plot(hc1, labels = FALSE, hang = -1, main = "Re-start from 10 clusters")
+par(opar)
+```
+
+### Random Forest
+
+Example code [@rfPackage].
+
+```{r, echo=FALSE}
+knitr::read_chunk("../package-demos/randomforest.R")
+```
+
+The 'unsupervised' case:
+
+```{r randomForest-pkg-mdsplot}
+```
+
+Works with a combination of numeric and factor variables.
+
+```{r randomForest-pkg-mdsplot-w-factors-numericals}
+```
+
+only factors also works
+
+```{r randomForest-pkg-mdsplot-factors-only}
+```
+
+### Dissimilarity Matrix Calculation
+
+```{r, echo=FALSE}
+knitr::read_chunk("../package-demos/cluster.R")
+```
+
+`cluster::daisy`
+
+Calculates pairwise dissimilarities (distances) between observations. Variables may be of mixed types.
+
+```{r cluster-pkg-agriculture-data}
+```
+
+daisy with euclidean distance (non-standardized variables i.e. default)
+
+```{r cluster-pkg-daisy-euclidean-distance-demo}
+```
+
+compare with gower metric
+
+```{r cluster-pkg-daisy-gower-demo}
+```
+
+```{r cluster-pkg-flower-data}
+```
+
+```{r cluster-pkg-daisy-flower-demo}
+```
+
+hierarchical clustering
+
+```{r cluster-pkg-daisy-flower-hclust-demo}
+```
+
+### Agglomerative nesting (hierarchical clustering)
+
+`cluster::agnes`
+
+Computes agglomerative hierarchical clustering of the dataset.
+
+```{r cluster-pkg-votes-data}
+```
+
+```{r cluster-pkg-agnes-example}
+```
+

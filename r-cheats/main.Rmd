@@ -1,0 +1,154 @@
+---
+title: "R cheatsheet"
+author: Emil Rehnberg
+date: "`r Sys.Date()`"
+documentclass: krantz
+biblio-style: apalike
+link-citations: yes
+colorlinks: yes
+graphics: yes
+lot: yes
+lof: yes
+fontsize: 11pt
+mainfont: Palatino
+monofontoptions: "Scale=0.8"
+site: bookdown::bookdown_site
+description: "Cheatsheet for R"
+url: 'https\://github.com/EmilRehnberg/cheatsheets'
+github-repo: EmilRehnberg/cheatsheets
+output:
+  pdf_document:
+    highlight: zenburn
+  html_document:
+    toc: TRUE
+    toc_depth: 3
+    number_sections: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    css: [code.css, r.css, dark.css]
+    df_print: tibble
+---
+
+```{r render, echo=FALSE, eval=FALSE}
+rmarkdown::render("main.Rmd", output_format="html_document") # "all_document"
+allexamples <- FALSE
+```
+
+# Set-up
+
+Set-up section for this document.
+
+Set options:
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 200)
+knitr::opts_chunk$set(tidy = "styler")
+```
+
+Read chunks:
+
+```{r read-package-demos}
+dir("demos", full.names = TRUE) %>% purrr::walk(knitr::read_chunk)
+dir("demos/statistics", full.names = TRUE) %>% purrr::walk(knitr::read_chunk)
+dir("package-demos", full.names = TRUE) %>% purrr::walk(knitr::read_chunk)
+```
+
+Check available chunks
+
+```{r, eval = FALSE}
+knitr:::knit_code$get()  # use this to check chunks in the current session
+```
+
+
+# Purpose
+
+This is a cheatsheet for R. A place to put useful code, for reminding of how to handle different situations that come up.
+
+# Datasets
+
+```{r datasets-section, child="datasets.Rmd", cache=FALSE, eval=FALSE}
+```
+
+# R-language design
+
+```{r r-design, child="r-design.Rmd", cache=FALSE, eval=FALSE}
+```
+
+# Standard Libraries
+
+```{r standard-library, child="standard-library/index.Rmd", cache=FALSE, eval=FALSE}
+```
+
+```{r "initiate polymorphic exclude", echo = FALSE}
+include <- function(obj, elms) UseMethod("include")
+exclude <- function(obj, elms) UseMethod("exclude")
+```
+
+# Helpers
+
+```{r Helpers, child="helpers.Rmd", cache=FALSE, eval=FALSE}
+```
+
+# Object Types
+
+```{r Object-types, child="object-types/index.Rmd", cache=FALSE, eval=FALSE}
+```
+
+# Package Usages
+
+```{r, echo=FALSE, eval=FALSE}
+# TODO:
+# 1. add vignette for lubridate - or look for better alternatives
+# 2. improve vignette for forcats
+# 3. should I use tibble? is it faster? or is just printing that's better?
+# 4. strangeness going on with purrr? can't compile
+```
+
+```{r Package-vignettes, child="package-vignettes/index.Rmd", eval = FALSE, cache=FALSE}
+```
+
+# Cheats
+
+```{r cheats, child="cheats.Rmd", cache=FALSE, eval=FALSE}
+```
+
+```{r comparing-objects, child="comparing-objects.Rmd", cache=FALSE, eval=FALSE}
+```
+
+# Plotting
+
+```{r plotting, child="plotting.Rmd", cache=FALSE, eval=FALSE}
+```
+
+# Statistics
+
+```{r Statistics, child="statistics/index.Rmd", eval = FALSE, cache=FALSE}
+```
+
+# Best practices
+
+```{r, echo=FALSE, eval=FALSE}
+# TODO:
+```
+
+```{r best-practices, child="best-practices/index.Rmd", eval = FALSE, cache=FALSE}
+```
+
+# workflows
+
+```{r, echo=FALSE, eval=FALSE}
+# TODO:
+# 1. messed up indentation etc.
+# 2. move section? perhaps compbine with best practices?
+```
+
+```{r workflows, child="workflows.Rmd", eval = FALSE, cache=FALSE}
+```
+
+# installation of packages
+
+```{r installations, child="installations.Rmd", eval = FALSE, cache=FALSE}
+```
+
+# References

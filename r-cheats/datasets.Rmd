@@ -1,0 +1,75 @@
+Dependecie: `magrittr`, `MASS`, `dplyr`
+
+```{r data-set-section-dependecies, eval=TRUE, echo=TRUE}
+library(magrittr)
+```
+
+## Overview
+
+`R` has several open datasets
+
+## numerical
+
+```{r}
+airquality %>% str
+mtcars %>% str
+USArrests %>% str
+```
+
+## Time-series
+
+```{r}
+AirPassengers %>% str
+Nile %>% str
+freeny %>% str # with numerical variables also!
+```
+
+## factors
+
+```{r}
+CO2 %>% str
+ChickWeight %>% str # Ord.factor ordinal factor!
+esoph %>% str # multiple Ord.factor
+iris %>% str
+npk %>% str
+warpbreaks %>% str
+# library(randomForest)
+# data(imports85)
+# imports85 %>% str # factors & ord.factor
+
+data(quine, package = "MASS")
+quine %>% str
+```
+
+## lists
+
+```{r}
+Harman23.cor %>% str
+```
+
+## tables
+
+multidimensional tables!
+
+```{r}
+Titanic %>% str
+```
+
+## Survival data suitable data
+
+```{r}
+data("GBSG2", package = "TH.data")
+GBSG2 %>% str
+with(GBSG2, { survival::Surv(time, cens) }) %>% head(10)
+```
+
+## text
+
+`starwars` data from `dplyr` package
+
+```{r}
+
+data(starwars, package = "dplyr")
+
+```
+

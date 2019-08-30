@@ -1,0 +1,17 @@
+### Overview
+
+section for working with `data.frame`
+
+### combining
+
+to concatenating / combining / binding data frames
+
+```{r "combining data frames"}
+
+d1 <- data.frame(a = 1, b = 2)
+d2 <- data.frame(b = 1, a = 2)
+rbind(d1, d2) # returns expected combined data.frames, names are intact
+
+```
+
+

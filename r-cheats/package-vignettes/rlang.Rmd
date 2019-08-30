@@ -1,0 +1,36 @@
+## rlang
+
+### Overview
+
+Overview for the `rlang` package. `quo` function is also imported by `dplyr`.
+
+### quo
+
+```{r "dplyr and quo"}
+rlang::quo(paste(letters[1:3], collapse = "+")) # doesn't work
+rlang::quo(!!paste(letters[1:3], collapse = "+"))
+```
+
+no magrittr piping
+
+```{r, eval = FALSE}
+paste(letters[1:3], collapse = "+") %>% quo(!!.)
+```
+
+sending
+
+```{r}
+sortArg <- rlang::quo(cyl)
+mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!sortArg)
+
+sortArg <- rlang::quo(cyl %>% (dplyr::desc))
+mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!sortArg)
+```
+
+doesn't work
+
+```{r, eval = FALSE}
+sortArg <- "cyl %>% (dplyr::desc)"
+mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!rlang::quo(sortArg))
+```
+

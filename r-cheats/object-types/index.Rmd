@@ -1,0 +1,23 @@
+## Overview
+
+Section for types like lists, data.frame, factors etc.
+
+## Dates
+
+```{r Dates, child="dates.Rmd", cache=FALSE}
+```
+
+## Factors
+
+```{r Factors, child="factors.Rmd", cache=FALSE}
+```
+
+## Data Frames
+
+```{r Data-frames, child="data-frames.Rmd", cache=FALSE}
+```
+
+## Lists
+
+```{r Lists, child="lists.Rmd", cache=FALSE}
+```

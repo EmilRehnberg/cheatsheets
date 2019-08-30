@@ -1,0 +1,182 @@
+## regexes
+
+### Overview
+
+- see `?regex` for more details on Regular Expressions
+- can be used for many things. e.g. `strsplit`
+- also see `grep` section
+
+### classes
+
+- `[:alnum:]` Alphanumeric characters: `[:alpha:]` and `[:digit:]`.
+- `[:alpha:]` Alphabetic characters: `[:lower:]` and `[:upper:]`.
+- `[:blank:]` Blank characters: space and tab, and possibly other locale-dependent characters such as non-breaking space.
+- `[:cntrl:]` Control characters.  In ASCII, these characters have octal codes 000 through 037, and 177 (‘DEL’).  In another character set, these are the equivalent characters, if any.
+- `[:digit:]` Digits: `0 1 2 3 4 5 6 7 8 9`.
+- `[:graph:]` Graphical characters: `[:alnum:]` and `[:punct:]`.
+- `[:lower:]` Lower-case letters in the current locale.
+- `[:print:]` Printable characters: `[:alnum:]`, `[:punct:]` and space.
+- `[:punct:]` Punctuation characters: `! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ \` { | } ~`.
+- `[:space:]` Space characters: tab, newline, vertical tab, form feed, carriage return, space and possibly other locale-dependent characters.
+- `[:upper:]` Upper-case letters in the current locale.
+- `[:xdigit:]` Hexadecimal digits: `0 1 2 3 4 5 6 7 8 9 A B C D E F a b c d e f`.
+
+### Reverse logic
+
+use e.g. `[^0-9]`
+
+```{r}
+
+phoneNums <-
+  c("081398664455", "083114605084", "089606983350", "0878 83282686",
+"085770714422", "085237141280", "+6285348551672", "0215522687",
+"+60109445138", "085791400805", "085795044447", "0811296113",
+"082136714653", "082137487870", "081380380959", "081225120000",
+"081291551721", "082225633200", "0895348595086", "085604306828",
+"082376342537", "081336618616", "081316564350", "08161368240",
+"082346633851", "082284374650", "082157122629", "08126063500",
+"087821102719", "089618876742", "085888292599", "082292175370",
+"082259505304", "085230018600", "081247883268", "081230068486",
+"+6282285553134", "087881492265", "087882320948", "081219630831",
+"089530803830", "085640996911", "081363930762", "0217891234",
+"0895361710777", "085819650926", "0815 27967189", "08567704404",
+"081216802488", "085259810046", "081315259249", "082161568728",
+"081221410683", "087753142839", "082151785551", "081318762621",
+"082226329094", "08121808035", "0878830-15351", "081221626240",
+"081214858079", "081802222650", "089514562860", "082346907926",
+"082344655309", "085891433990", "081217068606", "081219048706",
+"085892290313", "085264074000", "081283644779", "083167604590",
+"081372558794", "085340731850", "+6283831611122", "081381034778",
+"08129209872", "082130763333", "081310063397", "08138507777",
+"0816605861", "085292434342", "081213457989", "089505709376",
+"081282341665", "082216363055", "+6285719223582", "081288402780",
+"02812345678910", "081916590999", "082232166668", "082111947219",
+"085749183589", "0851-0503-6982", "085692342663", "082187471400",
+"081296840701", "089517733237", "085228881033", "089505153702",
+"0271633565")
+
+phoneNums %>% gsub("[0-9]+", "\\1", .)
+phoneNums %>% gsub("[^0-9]+", "\\1", .)
+
+phoneNums %>% gsub("\\d+", "\\1", .)
+phoneNums %>% gsub("\\D+", "\\1", .)
+
+```
+
+or with classes
+
+```{r}
+
+phoneNums %>% gsub("[[:digit:]]+", "\\1", .)
+phoneNums %>% gsub("[^[:digit:]]+", "\\1", .)
+
+```
+
+### splitting a string
+
+split a string into a atomic vector
+
+```{r}
+library(magrittr)
+"name bad  good \t heaven" %>% strsplit("[[:space:]]+") %>% unlist
+```
+
+
+### extracting based on pattern
+
+example for extracting numbers from strings
+
+- double escape regex-backslashes
+- use `.*` to match before and after the `()`-group
+
+```{r}
+files <-
+  c("data/attendance/workshop-2016-13-Attendance.tsv"
+   ,"data/attendance/workshop-2016-19-Attendance.tsv"
+   ,"data/attendance/workshop-2016-18-Attendance.tsv"
+   ,"data/attendance/workshop-2015-34-Attendance.tsv"
+   ,"data/attendance/workshop-2016-15-Attendance.tsv"
+   ,"data/attendance/workshop-2016-04-Attendance.tsv"
+   ,"data/attendance/workshop-2016-01-Attendance.tsv"
+)
+rs <- ".*(\\d{4}[-]\\d+).*"
+files %>% sub(rs, "\\1", .)
+```
+
+regex in `dir` to list specific files from file system in a directory. similar to `ls` in Unix.
+
+Below:
+
+- Say that `dir` returns the files below.
+- Use the `pattern` flag like below to only extract `\d{4}-\d{2}` file names.
+
+```{r, eval = FALSE}
+
+files <-
+  c( "total-2016-25-attendance.tsv", "total-2016-26-attendance.tsv"
+    ,"total-2016-27-attendance.tsv", "total-2016-28-attendance.tsv"
+    ,"total-2016-29-attendance.tsv", "total-2016-30-attendance.tsv"
+    ,"total-2016-31-attendance.tsv", "total-2016-32-attendance.tsv"
+    ,"total-2016-33-attendance.tsv", "total-2016-34-attendance.tsv"
+    ,"total-2016-35-attendance.tsv", "total-2016-36-attendance.tsv"
+    ,"total-2016-37-attendance.tsv", "total-holiday-attendance.tsv"
+  )
+
+dir(attendanceDir(center)
+    ,pattern = paste(classType, "[-](\\d{4}[-]\\d{2}).*", sep = ""))
+
+```
+
+```{r}
+timeslots <-
+  c("13:05", "14:40", "18:40", "19:40", "12:40", "13:40",
+    "18:40", "19:40", "12:40", "14:40", "18:05", "18:40",
+    "19:40", "11:40", "12:40", "14:40", "12:40", "13:40",
+    "14:40", "16:40", "12:40", "13:40", "18:40", "20:40")
+```
+
+Extracting hours
+
+```{r}
+timeslots %>%
+  gsub("(\\d{2}).*", "\\1", .)
+```
+
+Extracting minutes
+
+```{r}
+timeslots %>%
+  gsub(".*(\\d{2})", "\\1", .)
+```
+
+### mulitple patterns
+
+single character
+
+```{r}
+FirstName <- c("Ben","Brck","Adam","Molly","Eve")
+FirstName %>% grepl(pattern = "[AaEeIi]")
+```
+
+multiple character
+
+```{r}
+MobileTel <- c("170766666", "18132452345", "138789", "153213", "111342000"
+               ,"1772341", "18452342", "19123123", "17089991", "12188123")
+
+MobileTel %>%
+  grepl(pattern = "1340|1341|1342|1346|136|150|152|183|184|187|188")
+```
+
+### pattern begins with
+
+match on the beginning of the string
+
+```{r}
+MobileTel <- c("170766666", "18132452345", "138789", "153213", "111342000"
+               ,"1772341", "18452342", "19123123", "17089991", "12188123")
+
+MobileTel %>%
+  grepl(pattern = "^1340|^1341|^1342|^1346|^136|^150|^152|^183|^184|^187|^188")
+```
+

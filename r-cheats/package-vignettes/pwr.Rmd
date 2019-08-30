@@ -1,0 +1,23 @@
+## pwr
+
+### Overview
+
+Overview for the `pwr` package, package for calculating statistical power.
+
+### pwr.chisq.test
+
+Chi-square test power calculations.
+
+```{r "chi-square test power", eval = FALSE}
+pwr::pwr.chisq.test(
+  w = NULL,  # Effect size - 0.1, 0.3, and 0.5 represent small, medium, and large effect sizes respectively
+  N = NULL,  # Sample size
+  df = NULL, # degrees of freedom
+  sig.level = 0.05,
+ power = NULL
+  )
+```
+
+```{r "chi-square test power cont."}
+pwr::pwr.chisq.test(w = .5, N = 145, df = 1)
+```

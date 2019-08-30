@@ -1,0 +1,168 @@
+### Overview
+
+if new to factors then check out the [section](http://r4ds.had.co.nz/factors.html) in R for data science.
+
+### generate factor levels
+
+```{r}
+gl(2, 3, labels = c("Control", "Treatment"))
+```
+
+### drop factor levels
+
+Use the `droplevels` function. Returns the full argument object with pruned factor levels.
+
+```{r}
+df <-
+  data.frame(letters=letters[1:5],
+             numbers=seq(1:5))
+levels(df$letters)
+subdf <- df %>% subset(numbers <= 3)
+levels(subdf$letters)
+subdf$letters <- droplevels(subdf$letters)
+levels(subdf$letters)
+```
+
+### Replace NA with value in factor
+
+Replace NA with value in a factor variables.
+
+```{r}
+replaceFactorNAs <- function(fctr, naLevel = "Unknown"){
+  ifelse(fctr %>% is.na, naLevel, fctr %>% as.character) %>%
+    factor(fctr %>% levels %>% append(naLevel))
+}
+```
+
+### getFactors
+
+extract factor columns from data frame.
+
+```{r}
+library(magrittr)
+getFactors <- function(dataFrame){
+  dataFrame %>%
+    names %>%
+    sapply(function(colName){
+             dataFrame %>%
+               getElement(colName) %>%
+               is.factor
+    }) %>%
+    dataFrame[,.]
+}
+exams <-
+  expand.grid(res = c("Y", "N"),
+              score = 1:4,
+              id = LETTERS[1:5])
+exams %>% head %T>% print %>% getFactors
+```
+
+### ordered factors
+
+with ordered / ordinal factors you can filter using less / greater / larger / smaller than.
+
+```{r "ordered factors"}
+mp <- structure(list(pa = c("M 1", "M 2", "M 3")
+                     ,fy = c("FY17.05", "FY17.04", "FY17.03"))
+                , .Names = c("pa", "fy")
+                , row.names = c(NA, -3L)
+                , class = "data.frame")
+mp %<>%
+  dplyr::mutate( pa = pa %>% ordered
+                ,fy = fy %>% as.ordered)
+mp %>% str
+mp %>% dplyr::filter(pa > "M 1")
+```
+
+### transforming factors
+
+```{r}
+library(magrittr)
+levels <- 1:4
+factorVariable <- factor(levels,
+                         labels=levels+10)
+factorVariable %>% as.integer # returns underlying levels
+factorVariable %>% as.character # returns labels
+```
+
+### compact factor
+
+to weed out empty factors
+
+```{r "compact factor"}
+asCompactFactor <- function(fctr) fctr %>% as.character %>% as.factor
+(nonCompactFactor <- factor(c("A", "C", "A"), levels = LETTERS[1:5]))
+nonCompactFactor %>% asCompactFactor
+
+```
+
+### edit factors
+
+alter / remap factor-levels
+
+- use a look-up table
+- `remapFactor` function is MUCH faster for large factors
+- NOTE: the mapping is reversed in the two approaches
+- NOTE: use `as.character` in remapFactor2 to avoid serious bugs
+
+remapFactor code taken from [vignette](https://cran.r-project.org/web/packages/gdata/vignettes/mapLevels.pdf)
+
+```{r}
+(fvar <-
+  gl(n = 3, # number of levels
+     k = 2, # number of replications
+     labels = c("Control", "Treatment1", "Treatment2")))
+
+remapFactor <- function(fctr, fctrMap){ levels(fctr) <- fctrMap ; fctr }
+remapFactor2 <- function(fctr, fctrMap){ fctr %>% as.character %>% fctrMap[.] %>% unname %>% as.factor }
+
+factorLookUpMap <-
+  list(
+        "trmt" = "Treatment1"
+       ,"trmt" = "Treatment2"
+       ,"ctrl" = "Control"
+       )
+fvar %>% remapFactor(factorLookUpMap)
+
+factorLookUpMap2 <-
+  c(
+     "Treatment1" = "trmt"
+    ,"Treatment2" = "trmt"
+    ,"Control"    = "ctrl"
+    )
+fvar %>% remapFactor2(factorLookUpMap2)
+
+```
+
+or use `factor` to reorder factor levels
+
+```{r}
+set.seed(12)
+ist <- InsectSprays$spray %>% sample %>% head(10) %>% as.character
+ist %>% factor(levels = c("F", "D", "E", "A", "B"))
+.Last.value %>% table
+```
+
+or when it's more complicated
+
+```{r}
+c(1, 0, 0, NA, 1) %>%
+  factor(labels = c("N", "Y")) %>%
+  factor(c("N", "Y", "U"))
+```
+
+### rm one level factors
+
+from a data frame you might want to remove columns that are factors with only one level (since there's no variance). (compact factor / sparse factor)
+
+```{r "rmOneLevelFactors"}
+isOneLevelFactor <- function(vctr) {(vctr %>% is.factor) & (vctr %>% levels %>% length %>% equals(1))}
+rmOneLevelFactors <- function(dta)
+  dta %>%
+    purrr::map(function(col) if(col %>% isOneLevelFactor) NULL else col ) %>%
+    compact %>% as.data.frame
+
+data.frame(a = gl(2,2), b = gl(1,4), d = 1:4) %>% rmOneLevelFactors
+
+```
+

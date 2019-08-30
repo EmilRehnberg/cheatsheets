@@ -1,0 +1,590 @@
+
+### Overview
+
+- `ggplot2` will have precedence to base standard library `graphics::plot`
+
+### helpers
+
+`cut_width` is a helper function for easier cutting of numerical values.
+
+```{r ggplot_cut_width}
+library(magrittr)
+set.seed(12)
+(rr <- runif(10, max = 9) %>% round)
+rr %>% ggplot2::cut_width(3)
+```
+
+### ggplot in functions
+
+with `ggplot` in a function, if you're passing arguments for `aes` use `aes_string`.
+
+```{r}
+library(ggplot2)
+cars <- within(mtcars, { cyl <- as.factor(cyl) })
+renderBoxplot <- function(yvar){
+  ggplot(cars, aes_string(x = "cyl", y = yvar)) + geom_boxplot()
+}
+renderBoxplot("mpg")
+renderBoxplot("hp")
+```
+
+### Typical
+
+```{r}
+library(ggplot2)
+(ggplot(airquality,
+        aes(x = paste(Month, Day, sep="-"), y = Wind))
+  + geom_point(size = .7)
+  + geom_line(size = .5, colour = "blue")
+  + ylab("Wind (mph)")
+  + xlab("Days")
+  + ylim(0, 25)   # sets limit on y-axis
+  + ggtitle("Wind over time")
+  + geom_hline(aes(yintercept = median(Wind)), colour = "red")
+  + scale_x_discrete(breaks=NULL)
+)
+```
+
+### line plot
+
+line plots for e.g. a grouped (group by) data doesn't work since there's only one group, but ggplot expects there to be more than one group and it draws lines within the group. Hence, create a dummy group for ggplot.
+
+typical error: `geom_path: Each group consist of only one observation. Do you need to adjust the group aesthetic?`
+
+```{r}
+library(ggplot2)
+library(magrittr)
+library(dplyr)
+( airquality
+  %>% group_by(Month)
+  %>% summarise(wind = mean(Wind))
+  %>% ggplot(aes(y = wind, x = Month, group = 1))
+    + geom_point()
+    + geom_line()
+ )
+```
+
+with line groups
+
+```{r}
+library(ggplot2)
+( ggplot( within(airquality, {Month %<>% as.factor})
+         ,aes( x = Day
+              ,y = Temp
+              ,group = Month
+              ,colour = Month)
+       )
+  + geom_line(size = .5)
+  + geom_point(size = .7, fill = "white")
+)
+```
+
+### non-numeric argument
+
+typical error: `non-numeric argument to binary operator`
+
+this can be due to many reasons! most common is some syntax error, check trailing `+` and paratheses.
+
+### Histogram
+
+```{r}
+ggplot(airquality, aes(Wind)) + geom_histogram()
+```
+
+### Boxplot
+
+```{r}
+library(ggplot2)
+(ggplot(mpg, aes(class, hwy))
+ + geom_boxplot(outlier.size = 0.5)
+)
+```
+
+to deal with horizontal labels being to many, you can angle (diagonal, twist, turn, transpose, flip) the labels
+
+```{r}
+aq <-
+  within(airquality, {
+           mthStg = Day %>% cut(breaks = c(0, 10, 20,32), labels = c("A-ge","B-chuu","C-jou"))
+           yrStg = paste(Month, mthStg, sep = "-")
+  })
+( ggplot(aq, aes(yrStg, Temp))
+  + geom_boxplot(outlier.size = .5)
+  + ylab("Temperature")
+  + xlab("Year Stage")
+  + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  )
+```
+
+### Dendrogram
+
+See hierarchical clustering for base `plot` and `hclust`
+
+```{r "dendrogram_ggplot"}
+
+library(ggplot2)
+library(ggdendro)
+arrestsHc <- USArrests %>% dist %>% hclust("ave")
+arrestsHc %>% ggdendrogram
+arrestsHc %>% ggdendrogram(rotate = TRUE)
+
+```
+
+```{r "hc dendrogram with graphics::plot"}
+
+arrestsHc %>% plot
+arrestsHc %>% rect.hclust(5)
+arrestsHc %>% plot
+arrestsHc %>% rect.hclust(h = 40, which = c(2, 6), border = 3:4) # border is for colors
+
+arrestsHc %>% plot
+arrestsHc %>% rect.hclust(3)
+arrestsHc %>% rect.hclust(h = 30, which = c(3, 7), border = 3:4)
+
+```
+
+extracting dendrogram plot data
+
+```{r "dendrogram data extraction"}
+
+library(ggplot2)
+arrestsDendroDt <- arrestsHc %>% as.dendrogram %>% dendro_data(type = "rectangle")
+ggplot(segment(arrestsDendroDt)) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
+  coord_flip() +
+  scale_y_reverse(expand = c(.2, 0))
+.Last.value + theme_dendro() # remove axises and background
+
+ggplot(segment(arrestsHc %>% as.dendrogram %>% dendro_data(type = "triangle"))) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
+  coord_flip() +
+  scale_y_reverse(expand = c(.2, 0))
+
+```
+
+regression tree diagrams
+
+```{r}
+devtools::install_github("cran/tree")
+```
+
+
+```{r ""}
+
+library(tree)
+data(cpus, package = "MASS")
+model <- tree(log10(perf) ~ syct + mmin + mmax + cach + chmin + chmax
+              ,data = cpus)
+tree_data <- dendro_data(model)
+ggplot(segment(tree_data)) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend, size = n)
+               ,colour = "blue", alpha = 0.5) +
+  scale_size("n") +
+  geom_text(data = label(tree_data)
+            ,aes(x = x, y = y, label = label), vjust = -0.5, size = 3) +
+  geom_text(data = leaf_label(tree_data)
+            ,aes(x = x, y = y, label = label), vjust = 0.5, size = 2) +
+  theme_dendro()
+
+ggplot(segment(tree_data)) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend) ,colour = "blue") +
+  scale_size("n") +
+  geom_text(data = label(tree_data)
+            ,aes(x = x, y = y, label = label), vjust = -0.5, size = 3) +
+  geom_text(data = leaf_label(tree_data)
+            ,aes(x = x, y = y, label = label), vjust = 0.5, size = 2) +
+  theme_dendro()
+
+ggplot() +
+  geom_segment(data = tree_data$segments
+               ,aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_text(data = tree_data$labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 0) +
+  geom_text(data = tree_data$leaf_labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 1) +
+  theme_dendro()
+
+```
+
+```{r "trees with rpart"}
+
+data("kyphosis", package="rpart")
+rpart_data <-
+  rpart::rpart(Kyphosis ~ Age + Number + Start
+               ,method = "class"
+               ,data = kyphosis) %>% dendro_data
+
+ggplot() +
+  geom_segment(data = rpart_data$segments
+               ,aes(x = x, y = y, xend = xend, yend = yend)
+               ,colour = "blue") +
+  geom_text(data = rpart_data$labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 0) +
+  geom_text(data = rpart_data$leaf_labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 1) +
+  theme_dendro()
+
+co2_rpart_data <-
+  rpart::rpart(Treatment ~ Type + conc + uptake
+               ,method = "class"
+               ,data = CO2) %>% dendro_data
+
+ggplot() +
+  geom_segment(data = co2_rpart_data$segments
+               ,aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_text(data = co2_rpart_data$labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 0) +
+  geom_text(data = co2_rpart_data$leaf_labels
+            ,aes(x = x, y = y, label = label), size = 3, vjust = 1) +
+  theme_dendro()
+
+```
+
+### Facet grid
+
+- use the formula to tell how and what you want to stratify the data on.
+- Plot is split differently if `Species` is on the x-side
+- some added smoothing
+- use y and x side if you want to split on multiple categorical variables
+
+```{r}
+( ggplot(iris, aes(y = Sepal.Length,
+                   x = Sepal.Width))
+  + facet_grid(Species ~ .)
+  + geom_smooth()
+  )
+```
+
+### Themes
+
+```{r ggplot_themes}
+library(dplyr)
+library(ggplot2)
+diamondsTrunc <- diamonds[1:5000,]
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_bw()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_classic()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_bw()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_dark()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_gray()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_light()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_linedraw()
+  )
+
+( ggplot(data=diamondsTrunc, aes(carat,price ))
+  + geom_point(aes(colour= color))
+  + theme_minimal()
+  )
+```
+
+### Matrices
+
+#### Overview
+
+useful to see pairwise correlation of variables.
+
+#### graphics::pairs
+
+pairs with added loess smoother in lower and correlation in upper
+
+```{r}
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y))
+    txt <- format(c(r, 0.123456789), digits=digits)[1]
+    txt <- paste(prefix, txt, sep="")
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+pairs(~Sepal.Length+Sepal.Width+Petal.Length+Petal.Width, data=iris,
+      lower.panel=panel.smooth, upper.panel=panel.cor,
+      pch=20, main="Iris Scatterplot Matrix")
+```
+
+#### lattice
+
+Has options to condition the scatterplot matrix on a factor.
+
+```{r}
+library(lattice)
+super.sym <- trellis.par.get("superpose.symbol")
+splom(~iris[1:4],
+      groups = Species,
+      data = iris,
+      panel = panel.superpose,
+      key = list(title = "Three Varieties of Iris",
+                 columns = 3,
+                 points = list(pch = super.sym$pch[1:3],
+                 col = super.sym$col[1:3]),
+                 text = list(c("Setosa", "Versicolor", "Virginica"))))
+```
+
+#### car
+
+The `car` package can condition the scatterplot matrix on a factor, and optionally include lowess and linear best fit lines, and boxplot, densities, or histograms in the principal diagonal, as well as rug plots in the margins of the cells.
+
+```{r, eval=FALSE, echo=FALSE}
+
+dependencies <- c("minqa", "nloptr", "Rcpp", "RcppEigen", "lme4", "pbkrtest", "SparseM", "MatrixModels", "quantreg", "car")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
+```
+
+```{r}
+car::scatterplotMatrix(~mpg+disp+drat+wt|cyl
+                       ,data=mtcars
+                       ,main="Three Cylinder Options")
+```
+
+#### gclus
+
+The `gclus` package provides options to rearrange the variables so that those with higher correlations are closer to the principal diagonal. It can also color code the cells to reflect the size of the correlations.
+
+```{r, eval=FALSE, echo=FALSE}
+devtools::install_github("cran/gclus")
+```
+
+```{r}
+
+dta <- mtcars[c(1,3,5,6)] # get data
+dta.r <- abs(cor(dta)) # get correlations
+dta.col <- gclus::dmat.color(dta.r) # get colors
+
+```
+
+reorder variables so those with highest correlation are closest to the diagonal
+
+```{r}
+
+dta.o <- gclus::order.single(dta.r)
+gclus::cpairs(dta, dta.o, panel.colors=dta.col, gap=.5,
+              main="Variables Ordered and Colored by Correlation" )
+
+```
+
+#### gpairs
+
+```{r, eval = FALSE}
+
+dependencies <- c("barcode", "lmtest", "vcd", "gpairs")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
+```
+
+```{r}
+if (allexamples) {
+  y <- data.frame(A=c(rep("red", 100), rep("blue", 100)),
+                  B=c(rnorm(100),round(rnorm(100,5,1),1)),
+                  C=runif(200),
+                  D=c(rep("big", 150), rep("small", 50)),
+                  E=rnorm(200))
+  gpairs::gpairs(y)
+}
+
+if (allexamples) {
+  data(iris)
+  gpairs::gpairs(iris)
+  gpairs::gpairs(iris, upper.pars = list(scatter = 'stats'),
+         scatter.pars = list(pch = substr(as.character(iris$Species), 1, 1),
+                             col = as.numeric(iris$Species)),
+         stat.pars = list(verbose = FALSE))
+  gpairs::gpairs(iris, lower.pars = list(scatter = 'corrgram'),
+         upper.pars = list(conditional = 'boxplot', scatter = 'loess'),
+         scatter.pars = list(pch = 20))
+}
+
+if (allexamples) {
+  data(Leaves)
+  gpairs::gpairs(Leaves[1:10], lower.pars = list(scatter = 'loess'))
+  gpairs::gpairs(Leaves[1:10], upper.pars = list(scatter = 'stats'),
+         lower.pars = list(scatter = 'corrgram'),
+         stat.pars = list(verbose = FALSE), gap = 0)
+  gpairs::corrgram(Leaves[,-33])
+}
+```
+
+#### GGally
+
+```{r, eval=FALSE, echo=FALSE}
+
+dependencies <- c("prettyunits", "progress", "reshape", "GGally")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
+```
+
+not sure how well this package is working.
+Examples given in `?GGally::ggpairs` doesn't seem to work very well (or at all).
+
+```{r ggally_matrix_plot, eval = FALSE}
+library(GGally)
+if (allexamples){
+  ds <- read.csv("for-gally.csv")
+  ds$sex <- ifelse(ds$female==1, "female", "male") %>% as.factor
+  ds$housing <- ifelse(ds$homeless==1, "homeless", "housed") %>% as.factor
+  GGally::ggpairs(ds,
+          columns=c("i1", "cesd", "housing", "sex"), # list the factor variables first to get better boxplots
+          diag=list(continuous="density",
+                    discrete="bar"),
+          axisLabels="show")
+}
+
+if (allexamples){
+  data(tips, package = "reshape")
+  GGally::ggpairs(tips[, 1:3])
+  GGally::ggpairs(tips, 1:3, columnLabels = c("Total Bill", "Tip", "Sex"))
+  GGally::ggpairs(tips, 1:3, upper = "blank")
+  GGally::ggpairs(tips[, 1:3], axisLabels="internal") # Only Variable Labels on the diagonal (no axis labels)
+  GGally::ggpairs(tips[, 1:3], axisLabels="none") # Only Variable Labels on the outside (no axis labels)
+
+  GGally::ggpairs(
+    tips[, c(1, 3, 4, 2)],
+    upper = list(continuous = "density", combo = "box"),
+    lower = list(continuous = "points", combo = "dot")
+  )
+}
+
+if (allexamples){
+  data(diamonds, package="ggplot2")
+  diamonds.samp <- diamonds %>% sample_n(30)
+
+  GGally::ggpairs(
+    diamonds.samp,
+    columns = "carat cut clarity depth" %>% wordArray,
+    mapping = ggplot2::aes(color = cut),
+    upper = list(continuous = wrap("density", alpha = 0.5),
+                 combo = "box"),
+    lower = list(continuous = wrap("points", alpha = 0.3),
+                 combo = wrap("dot", alpha = 0.4)),
+    title = "Diamonds"
+  )
+}
+
+custom_car <- GGally::ggpairs(mtcars[, c("mpg", "wt", "cyl")], upper = "blank", title = "Custom Example")
+
+```
+
+ggplot example taken from example(geom_text)
+
+```{r eval = FALSE}
+plot <- ggplot2::ggplot(mtcars, ggplot2::aes(x=wt, y=mpg, label=rownames(mtcars)))
+plot <- plot +
+  ggplot2::geom_text(ggplot2::aes(colour=factor(cyl)), size = 3) +
+  ggplot2::scale_colour_discrete(l=40)
+custom_car[1, 2] <- plot
+personal_plot <- GGally::ggally_text(
+  "ggpairs allows you\nto put in your\nown plot.\nLike that one.\n <---"
+)
+custom_car[1, 3] <- personal_plot
+custom_car
+```
+
+#### ggplot2::plotmatrix
+
+Depricated.
+
+```{r, eval = FALSE}
+library(ggplot2)
+plotmatrix(with(iris, data.frame(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width)))
+```
+
+### ggplot2 with multiple datasets and colors
+
+```{r}
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+dpassed <- rep(c("Yes", "No"), each=1000)
+dspeed <- c(rnorm(1000, 2),
+           rnorm(1000, 1))
+lvlData <- data.frame(passed = dpassed, speed = dspeed)
+samples <- factor(c("Passed", "Total"))
+
+```
+
+TODO: FIX ME
+
+```{r , eval = FALSE}
+(
+  ggplot(lvlData %>% filter(passed == "Yes"),
+         aes(x=speed, color="Sample", shape="Sample", linetype="Sample"))
+  + stat_ecdf(data=lvlData,
+              aes(x=speed, color="Total", shape="Total", linetype="Total"))
+  + stat_ecdf(aes(color="Passed", shape="Passed", linetype="Passed"))
+  + xlab("")
+  + ylab("inclusion")
+  + labs(title="Average days to completion")
+  + scale_color_manual(breaks=samples, values=c("green", "red"))
+  + scale_shape_manual(breaks=samples, values=c(16, 16))
+  + scale_linetype_manual(breaks=samples, values=c(1, 1))
+  + labs(color = "dataset")
+  + theme(legend.title=element_blank())
+)
+```
+
+### add linear regression line
+
+```{r}
+dlmDtExample <-
+  structure(list(date =
+                 structure(c(3407, 3438, 3468, 3499, 3530, 3560, 3591, 3621, 3652, 3683, 3712, 3743, 3773, 3804, 3834,
+                             3865, 3896, 3926, 3957, 3987, 4018, 4049, 4077, 4108, 4138, 4169, 4199, 4230, 4261, 4291,
+                             4322, 4352, 4383, 4414, 4442, 4473, 4503, 4534, 4564, 4595, 4626, 4656, 4687, 4717, 4748,
+                             4779, 4807, 4838, 4868, 4899, 4929, 4960, 4991, 5021, 5052, 5082, 5113, 5144, 5173, 5204,
+                             5234, 5265, 5295, 5326, 5357), class = "Date"),
+                 gas = c(4.9, 4.5, 3.1, 3.1, 4.6, 4.8, 6.7, 8.6, 8.3, 7.2, 9.2, 5.5, 4.7, 4.4,
+                         3.4, 2.8, 4, 5.1, 6.5, 9.2, 7.7, 7.7, 8.9, 5.7, 5, 4.5, 3.3,
+                         2.8, 4, 5.6, 6.6, 10.3, 8.5, 7.9, 8.9, 5.4, 4.4, 4, 3, 3.1, 4.4,
+                         5.5, 6.5, 10.1, 7.7, 9, 9, 6.5, 5.1, 4.3, 2.7, 2.8, 4.6, 5.5,
+                         6.9, 9.5, 8.8, 8.7, 10.1, 6.1, 5, 4.5, 3.1, 2.9, 4.8)),
+            .Names = c("date", "gas"),
+            row.names = c(NA, -65L),
+            class = "data.frame")
+
+( ggplot(dlmDtExample, aes(x = date, y = gas))
+  + geom_line()
+  + ggtitle("UK gas consumption: amount in 106 tonnes coal equivalent")
+  + geom_smooth(method = "lm", se = FALSE)
+)
+
+```
+
+or a polynomial
+
+```{r}
+( ggplot(dlmDtExample, aes(x = date, y = gas))
+  + geom_line()
+  + ggtitle("UK gas consumption: amount in 106 tonnes coal equivalent")
+  + geom_smooth(method = "lm", se = FALSE, formula = y ~ poly(x, 4))
+)
+
+```
+

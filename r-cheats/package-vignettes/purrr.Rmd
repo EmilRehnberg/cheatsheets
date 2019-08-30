@@ -1,0 +1,803 @@
+## purrr
+
+### Overview
+
+Overview of purrr package.
+
+### use-case
+
+- `map()` makes a list.
+- `map_lgl()` makes a logical vector.
+- `map_int()` makes an integer vector.
+- `map_dbl()` makes a double vector.
+- `map_chr()` makes a character vector.
+
+```{r "purrr use case"}
+library(purrr)
+
+mtcars %>%
+  split(.$cyl) %>% # from base R
+  map(~ lm(mpg ~ wt, data = .)) %>%
+  map(summary) %>%
+  map_dbl("r.squared")
+```
+
+```{r "two level split, 2nd split only on half"}
+dff <-
+  data.frame(F1 = gl(2,3, labels = c("a", "b"))
+             ,F2 = gl(3,2, labels = LETTERS[1:3])
+             ,r1 = rnorm(6)
+             )
+stratDff <- dff %>% split(.$F1)
+stratDff$b %<>% split(.$F2)
+
+```
+
+### map
+
+```{r "purrr::map"}
+library(purrr)
+
+sums <-
+  mtcars %>%
+    split(.$cyl) %>% # from base R
+    map(~ lm(mpg ~ wt, data = .)) %>%
+    map(summary)
+
+sums %>% map_dbl("r.squared")
+sums %>% map_chr("r.squared")
+```
+
+to add names use pipe `set_names` after
+
+```{r "purrr::map with names"}
+sums %>% map("call") %>% purrr::set_names(paste0("CylinderCnt_", c(4,6,8)))
+```
+
+`.id` argument is available for `purrr::map_df`
+
+```{r ".id argument only works with map_df"}
+
+purrr::rerun(5, rnorm(100)) %>%
+  set_names(paste0("sim", 1:5)) %>%
+  purrr::map_df(~ dplyr::tibble(value = .x, step = 1:100), .id = "simulation")
+
+```
+
+### imap - map with index / names
+
+iterate with names for `map`, `walk` etc.
+`imap(lst, .f)` is short for `map(lst, names(list), .f)`
+
+```{r}
+
+c(mohammad = "^moh$|^muhamed$|^mohamed$",ahmad = "^ahmed$|^ahmat$") %>% purrr::imap(~ paste0("regex from ", .y, ": ", .x))
+
+c(mohammad = "^moh$|^muhamed$|^mohamed$",ahmad = "^ahmed$|^ahmat$") %>% purrr::imap_chr(~ paste0("regex from ", .y, ": ", .x))
+
+```
+
+
+
+### partial
+
+Curry a function. i.e. prefill arguments for a function. by default the prefilled arguments are evaluated lazily.
+
+```{r "purrr::partial"}
+compact1 <- function(x) discard(x, is.null)
+compact2 <- partial(discard, .p = is.null)
+```
+
+and the generated source code is very similar to what we made by hand
+
+```{r}
+compact1
+compact2
+
+f <- partial(runif, n = rpois(1, 5))
+f
+f()
+f()
+```
+
+You can override this by saying .lazy = FALSE
+
+```{r}
+f <- partial(runif, n = rpois(1, 5), .lazy = FALSE)
+f
+f()
+f()
+```
+
+### prepend
+
+companion to `append`
+
+```{r purrr::prepend}
+x <- as.list(1:3)
+x %>% append("a")
+x %>% prepend("a")
+```
+
+### generate random discrete numbers
+
+```{r "purrr::rdunif"}
+rdunif(1e3, 10) %>% table
+```
+
+### reduce
+
+similar to `base::Reduce`. except the argument order makes sense :D
+
+```{r "purrr::reduce"}
+1:10 %>% reduce(`*`)
+```
+
+### rerun
+
+rerun some code and `n` times and output the result in a list of length `n`
+
+```{r "purrr::rerun"}
+
+3 %>% rerun(rnorm(5))
+2 %>% rerun(nrm = rnorm(3), unif = runif(3))
+
+```
+
+### dealing with failure
+
+use `safely` function.
+usage is very restrictive!
+
+```{r "purrr::safely"}
+safe_log <- safely(log)
+safe_log(10)
+safe_log("a")
+
+loggedList <- list(1, 10, "a") %>% map(safely(log))
+loggedList %>% str
+
+loggedList %>% transpose %>% str
+```
+
+### scalar predicates
+
+predicates for an object being of a type and being scalar (i.e. length 1)
+
+- `is_scalar_list(x)`
+- `is_scalar_atomic(x)`
+- `is_scalar_vector(x)`
+- `is_scalar_numeric(x)`
+- `is_scalar_integer(x)`
+- `is_scalar_double(x)`
+- `is_scalar_character(x)`
+- `is_scalar_logical(x)`
+
+### setting names
+
+snake case wrapper for `setNames`, tweaked defaults and stricter argument checks
+
+```{r "purrr::set_names"}
+set_names(1:4, letters[1:4])
+set_names(letters[1:4]) # names is defaulting to the vector itself
+```
+
+### splice
+
+function for appending to a list, or `splicing` all arguments into a list.
+
+probably `update_list` is preferred though due to the edge-case shown below
+
+```{r}
+library(purrr)
+```
+
+want to an arg3 to inputs
+
+```{r}
+inputs <- list(arg1 = "a", arg2 = "b")
+```
+
+below is not sufficient
+
+```{r}
+list(inputs, arg3 = c("c1", "c2")) %>% str()
+c(inputs, arg3 = c("c1", "c2")) %>% str()
+```
+
+use `splice`. `splice()` concatenates the elements of inputs with arg3
+
+```{r}
+splice(inputs, arg3 = c("c1", "c2")) %>% str()
+```
+
+edge-case when two elements get named the same
+
+```{r}
+splice(inputs, arg2 = c("c1", "c2")) %>% str()
+```
+
+use update_list instead
+
+```{r}
+update_list(inputs, arg2 = c("c1", "c2")) %>% str()
+```
+
+you can append but it's clunky
+
+```{r}
+append(inputs, list(arg3 = c("c1", "c2")))
+```
+
+or worse with a complete statement, mutating inputs
+
+```{r}
+inputs[["arg3"]] <- c("c1", "c2")
+inputs
+```
+
+### split/order/sort by list components
+
+DEPRECATED see [github release](https://github.com/tidyverse/purrr/tree/v0.2.3)
+
+```{r "purrr::split_by", eval = FALSE}
+
+(l1 <- transpose(list(x = sample(4), y = letters[1:4])))
+l1 %>% order_by("x") # strings can't be used anymore
+l1 %>% sort_by("x")
+
+(l2 <- rerun(5, g = sample(2, 1), y = rdunif(5, 10)))
+l2 %>% split_by("g") %>% str()
+l2 %>% split_by("g") %>% map(. %>% map("y"))
+
+```
+
+### transpose
+
+transpose a list to change order of indexing of a symmetric list
+
+```{r "purrr::transpose"}
+safe_log <- safely(log)
+loggedList <- list(1, 10, "a") %>% map(safe_log)
+loggedList %>% str
+loggedList %>% transpose %>% str
+```
+
+### type predicates
+
+- `is_list(x)`
+- `is_atomic(x)`
+- `is_vector(x)`
+- `is_numeric(x)`
+- `is_integer(x)`
+- `is_double(x)`
+- `is_character(x)`
+- `is_logical(x)`
+- `is_null(x)`
+- `is_function(x)`
+
+### update a list
+
+modification of a list. similar to `splice` but can overwrite elements with same name.
+
+```{r "purrr::update_list"}
+
+inputs <- list(arg1 = "a", arg2 = "b")
+purrr::update_list(inputs, arg2 = c("c1", "c2")) %>% str()
+
+```
+
+instead of using splice
+
+```{r}
+splice(inputs, arg2 = c("c1", "c2")) %>% str()
+
+purrr::update_list(inputs, arg3 = c("c1", "c2")) %>% str()
+
+SpecialArguments <- list(arg1 = c("c1", "c2"))
+```
+
+make it a deeper list
+
+```{r}
+purrr::update_list(inputs, SpecialArguments = SpecialArguments) %>% str
+```
+
+update list contents with overwrites using splicing !!! or `UQS()`
+
+```{r}
+purrr::update_list(inputs, !!! SpecialArguments) %>% str
+```
+
+if you add a list to list though use good old append
+
+```{r}
+spArgList <- list(specialArgs = c("c2", "c3"))
+```
+
+below broke
+
+```{r, eval = FALSE}
+inputs %>% purrr::update_list(spArgList) # will spit out inputs
+```
+
+```{r}
+inputs %>% append(spArgList)
+```
+
+### when
+
+pattern match with conditions using `when`. Matching the 2nd condition.
+
+```{r "purrr::when"}
+1:10 %>%
+  when( sum(.) <=  50 ~ sum(.)
+       ,sum(.) <= 100 ~ sum(.)/2
+       ,~ 0
+       )
+```
+
+matching both the first and 2nd conditions > first condition wins!
+
+```{r}
+1:10 %>%
+  when( sum(.) <=   x ~ sum(.)
+       ,sum(.) <= 2*x ~ sum(.)/2
+       ,~ 0
+       ,x = 60
+       )
+```
+
+doesn't match the condition so run default
+
+```{r}
+iris %>%
+  subset(Sepal.Length > 10) %>%
+  when( nrow(.) > 0 ~ .
+       ,~ iris %>% head(10)
+       )
+```
+
+### iterating over multiple vectors simultaneously
+
+use `pmap` to iterate over an arbitrary number of arguments / vectors at the same time.
+
+```{r "purrr::pmap"}
+library(purrr)
+mu  <- list(5, 10, -3)
+sgm <- list(1, 5, 10)
+n   <- list(1, 3, 5)
+```
+
+with two arguments, you can use `map2`
+
+```{r}
+map2(mu, sgm, rnorm, n = 5) %>% str()
+```
+
+for more arguments, use a list and `pmap`.
+
+no names means order is significant!!
+
+```{r}
+argsList <- list(n, mu, sgm)
+argsList %>% pmap(rnorm)
+```
+
+use a named list for more comprehensable code
+
+```{r}
+argsList <- list(mean = mu, sd = sgm, n = n)
+argsList %>% pmap(rnorm)
+
+mu  <- list(5, 10, -3)
+sigma <- list(1, 5, 10)
+n <- list(1, 3, 5)
+args1 <- list(n, mu, sigma)
+args1 %>%
+  pmap(rnorm) %>%
+  str()
+```
+
+### walk
+
+use `walk`/`pwalk` to iterate but you're interested in the side-effect instead of the returning value.
+
+e.g. you have a list of plot objects and a list of filenames you want the plots saved to
+
+```{r "purrr:walk"}
+library(ggplot2)
+plots <- mtcars %>%
+  split(.$cyl) %>%
+  map(~ggplot(., aes(mpg, wt)) + geom_point())
+paths <- stringr::str_c(names(plots), ".pdf")
+
+pwalk(list(paths, plots), ggsave, path = tempdir())
+```
+
+### get-attr
+
+read attributes infix
+
+```{r "purrr::get-attr"}
+factor(1:3) %@% "levels"
+mtcars %@% "class"
+```
+
+### empty?
+
+`is_empty` function for vectors or lists
+
+```{r purrr::is_empty}
+is_empty(NULL)
+is_empty(list())
+is_empty(list(NULL))
+```
+
+### keep / discard / compact
+
+usually called `filter`/`select`/`find_all` and `reject`/`drop` in other languages. (these names are taken however)
+
+`compact` works well with both lists and vectors
+
+```{r "purrr::keep"}
+rep(10, 10) %>%
+  map(sample, 5) %>%
+  keep(function(x) mean(x) > 6)
+```
+
+Or use a formula
+
+```{r}
+rep(10, 10) %>%
+  map(sample, 5) %>%
+  keep(~ mean(.x) > 6)
+```
+
+Using a string instead of a function will select all list elements.
+Where that subelement is `TRUE.`
+
+```{r}
+(x <- rerun(5, a = rbernoulli(1), b = sample(10)))
+x %>% keep("a")
+x %>% discard("a")
+```
+
+filter list on is.integer
+
+```{r}
+list(a = 1:3
+     ,b = gl(4,3)
+     ,d = integer()
+     ,e = letters
+     ) %>% purrr::keep(is.integer)
+```
+
+compact keeps all non-NULL and empty items
+
+```{r}
+list( a = 1
+     ,b = NULL
+     ,c = FALSE
+     ,d = "FALSE"
+     ,e = integer()
+     ,f = character()
+     ,g = list(NULL)
+     ,h = NA
+     ) %>% (purrr::compact)
+
+c(1, NULL, 3, NA, 5) %>% compact
+c(1, NULL, 3, NA, 5) %>% purrr::compact()
+```
+
+### conditional map
+
+use `map_if` with predicate function and `map_at` with names or index
+
+```{r "purrr::map_if"}
+iris %>%
+  purrr::map_if(is.factor, as.character) %>%
+  str()
+```
+
+Specify which columns to map with a numeric vector of positions:
+
+```{r}
+mtcars %>% map_at(c(1, 4, 5), as.character) %>% str()
+```
+
+Or with a vector of names:
+
+```{r}
+mtcars %>% map_at(c("cyl", "am"), as.character) %>% str()
+```
+
+### lmap
+
+apply a function to list-elements of a list, and must return a list. the length of the list going in can be of a different size to that one going out.
+
+Let's write a function that returns a larger list or an empty list
+depending on some condition. This function also uses the names
+metadata available in the attributes of the list-element.
+
+```{r "purrr::lmap"}
+library(purrr)
+maybe_rep <- function(e) {
+  n <- rpois(1, 2)
+  out <- rep_len(e, n)
+  if (length(out) > 0) {
+    names(out) <- paste0(names(e), seq_len(n))
+  }
+  out
+}
+
+x <- list(a = 1:4, b = letters[5:7], c = 8:9, d = letters[10])
+```
+
+The output size varies each time we map f()
+
+```{r}
+x %>% lmap(maybe_rep)
+```
+
+We can apply f() on a selected subset of x
+
+```{r}
+x %>% lmap_at(c("a", "d"), maybe_rep)
+```
+
+Or only where a condition is satisfied
+
+```{r}
+x %>% lmap_if(is.character, maybe_rep)
+```
+
+each element in the list is sent in as a list
+
+```{r}
+list(a = 1:2, b = letters[1:3]) %>% purrr::lmap(function(eal) { class(eal) %>% print; eal}) %>% invisible
+```
+
+making it possible to access the names of the list entries
+
+```{r}
+x %>% purrr::lmap(function(e) { names(e) %<>% paste0("_3"); e})
+```
+
+and you'll have to dig deeper to e.g. alter the names of the original list entries
+
+```
+list(a = c(B = 2, V = 3)) %>% lmap(function(eal) {names(eal[[1]]) %<>% paste0(0); eal})
+```
+
+### at depth
+
+apply a function at a set depth of a nested list
+
+`x %>% at_depth(0, fun)` is equivalent to `fun(x)`.
+
+`x %>% at_depth(1, fun)` is equivalent to `map(x, fun)`.
+
+`x %>% at_depth(2, fun)` is equivalent to `map(x, . %>% map(fun))`.
+
+```{r "purrr::modify_depth prep"}
+
+l1 <- list(
+  obj1 = list(
+    prop1 = list(param1 = 1:2, param2 = 3:4),
+    prop2 = list(param1 = 5:6, param2 = 7:8)
+    ),
+  obj2 = list(
+    prop1 = list(param1 = 9:10, param2 = 11:12),
+    prop2 = list(param1 = 13:14, param2 = 15:16)
+    )
+  )
+
+```
+
+In the above list, "obj" is level 1, "prop" is level 2 and "param"
+is level 3. To apply `sum()` on all params, we map it at depth 3:
+
+```{r "purrr::at_depth DEPRECATED", eval = FALSE}
+
+l1 %>% at_depth(3, sum)
+```
+
+map() lets us pluck the elements prop1/param2 in obj1 and obj2:
+
+```{r}
+l1 %>% map(c("prop1", "param2")) %>% str()
+```
+
+But what if we want to pluck all param2 elements? Then we need to act at a lower level:
+
+```{r}
+l1 %>% at_depth(2, "param2") %>% str()
+
+```
+
+```{r "purrr::modify_depth example"}
+
+l1 %>% purrr::modify_depth(3, sum )
+l1 %>% purrr::map(c("prop1", "param2"))
+l1 %>% purrr::modify_depth(2, "param2")
+l1 %>% purrr::modify_depth(2, ~ log(.$param2) )
+
+```
+
+
+### has_element
+
+predicate function for checking inclussion / containing of objects in another.
+
+works with lists and vectors. but there's some gotchas.
+
+```{r "purrr::has_element"}
+
+x <- list(1:10, 5, 9.9)
+x %>% has_element(1:10)
+x %>% has_element(3)
+list(1, 2, 3) %>% has_element(2)
+c(1, 2, 3) %>% has_element(2)
+```
+
+gotchas!
+
+```{r}
+1:3 %>% as.list %>% has_element(2)
+1:3 %>% has_element(2)
+```
+
+instead use
+
+```{r}
+1:3 %>% as.list %>% has_element(2L)
+1:3 %>% has_element(2L)
+
+```
+
+### invoke
+
+Set of functions facilitating invokation / execution of combinations of functions and parameters
+
+```{r "purrr::invoke"}
+# Invoke a function with a list of arguments
+invoke(runif, list(n = 10))
+# Invoke a function with named arguments
+invoke(runif, n = 10)
+
+list("01a", "01b") %>%
+  invoke(paste, ., sep = ".")
+```
+
+invoke map
+
+```{r "purrr::invoke_map"}
+# Invoke a list of functions, each with different arguments
+invoke_map(list(runif, rnorm), list(list(n = 10), list(n = 5)))
+# Or with the same inputs:
+invoke_map(list(runif, rnorm), list(list(n = 5)))
+invoke_map(list(runif, rnorm), n = 5)
+# Or the same function with different inputs:
+invoke_map("runif", list(list(n = 5), list(n = 10)))
+
+# Or as a pipeline
+list(m1 = mean, m2 = median) %>% invoke_map(x = rcauchy(100))
+list(m1 = mean, m2 = median) %>% invoke_map_dbl(x = rcauchy(100))
+```
+
+### lift
+
+composition helper. helps with sending parameters to functions.
+
+- `d`: dots `...`
+- `l`: list
+- `v`: vector
+
+`lift_dl` means lift dots to list.
+
+```{r "purrr::lift functions"}
+### Lifting from ... to list(...) or c(...)
+x <- list(x = c(1:100, NA, 1000), na.rm = TRUE, trim = 0.9)
+lift_dl(mean)(x)
+lift(mean)(x) # lift is alias for lift_dl
+
+# Or in a pipe:
+mean %>% lift_dl %>% invoke(x)
+
+# Default arguments can also be specified directly in lift_dl()
+list(c(1:100, NA, 1000)) %>% lift_dl(mean, na.rm = TRUE)()
+
+# lift_dl() and lift_ld() are inverse of each other.
+# Here we transform sum() so that it takes a list
+fun <- sum %>% lift_dl()
+fun(list(3, NA, 4, na.rm = TRUE))
+# Now we transform it back to a variadic function
+fun2 <- fun %>% lift_ld()
+fun2(3, NA, 4, na.rm = TRUE)
+```
+
+### combinations
+
+read the `cross` help for more complex situations.
+
+```{r "purrr::cross"}
+dta <-
+  list(id = c("John", "Jane"),
+       greeting = c("Hello.", "Bonjour."),
+       sep = c("! ", "... ")
+       )
+
+combinations <- dta %>% cross()
+combinations %>% str
+combinations %>% map(lift(paste))
+```
+
+### detect
+
+`find`/`detect` in ruby. returns FIRST result based on some data and a predicate.
+
+works for vectors or lists.
+
+```{r "purrr::detect"}
+is_even <- function(x) x %% 2 == 0
+
+3:10 %>% detect(is_even)
+3:10 %>% detect_index(is_even)
+
+3:10 %>% detect(is_even, .right = TRUE)
+3:10 %>% detect_index(is_even, .right = TRUE)
+
+l1 <-
+  list( l11 = list(a = 1, b = 2, mes = "1st item")
+       ,l12 = list(a = 3, b = 4, mes = "2nd item"))
+l1 %>% detect(~ .$b == 4)
+```
+
+### every / some
+
+`all`/`any` in Ruby. predicate functions.
+
+```{r "purrr::every"}
+x <- list(0, 1, TRUE)
+x %>% every(identity)
+x %>% some(identity) # returns TRUE on the last predicate check
+
+y <- list(0:10, 5.5)
+y %>% every(is.numeric)
+y %>% every(is.integer)
+```
+
+### flatten
+
+similar to `unlist` but only flattens one layer at a time.
+
+```{r "purrr::flatten"}
+(x <- list( rerun(2, sample(4))
+           ,rerun(2, sample(4))))
+x %>% flatten()
+rerun(2, sample(4)) %>% flatten_int()
+```
+
+### negate
+
+negate a predicate function
+
+```{r "purrr::negate"}
+set.seed(12)
+x <- transpose(list(x = 1:10, y = rbernoulli(10)))
+x %>% keep("y") %>% length() # keep the list entries with y being TRUE
+x %>% keep(negate("y")) %>% length() # same as above but y being FALSE
+```
+
+### null-default
+
+inspired from ruby's `||`
+
+```{r "purrr::null-default"}
+1 %||% 2
+NULL %||% 2
+NA %||% 2
+integer() %||% 2
+```
+

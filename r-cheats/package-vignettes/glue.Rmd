@@ -1,0 +1,47 @@
+## glue
+
+### glue
+
+main function for string interpolation similar to how it works in Ruby.
+
+```{r}
+abc = "DADDY"
+glue::glue("Who's your {abc}?")
+
+name <- "Fred"
+age <- 50
+anniversary <- as.Date("1991-10-12")
+glue::glue(
+  'My name is {name},',
+  'my age next year is {age + 1},',
+  'my anniversary is {format(anniversary, "%A, %B %d, %Y")}.')
+
+# single braces can be inserted by doubling them
+glue::glue("My name is {name}, not {{name}}.")
+
+# Named arguments can also be supplied
+glue::glue(
+  'My name is {name},',
+  ' my age next year is {age + 1},',
+  ' my anniversary is {format(anniversary, "%A, %B %d, %Y")}.',
+  name = "Joe",
+  age = 40,
+  anniversary = as.Date("2001-10-12"))
+
+# `glue_data()` is useful in magrittr pipes
+mtcars %>% glue::glue_data("{rownames(.)} has {hp} hp")
+
+# Alternative delimiters can also be used if needed
+one <- "1"
+glue::glue("The value of $e^{2\\pi i}$ is $<<one>>$.", .open = "<<", .close = ">>")
+```
+
+### quoting
+
+there's `single_quote`, `double_quote` and `backtick` functions for surrounding the argument with the select quote. Also there's `collapse` that works similar to how it works in `paste`.
+
+```{r}
+x <- 1:5
+glue::glue('Values of x: {glue::collapse(glue::backtick(x), sep = ", ", last = " and ")}')
+```
+

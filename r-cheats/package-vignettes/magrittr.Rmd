@@ -1,0 +1,43 @@
+## magrittr
+
+### Overview
+
+magrittr stuff. TODO: Add Anki stuff
+
+```{r echo = FALSE}
+library(magrittr)
+```
+
+### pipe anonymous function
+
+wrap the function in paratheses.
+
+```{r}
+f1 <- gl(2,4) %>% sample
+f2 <- gl(2,4) %>% sample
+table(f1, f2) %>%
+  (function(table){ divide_by(table %>% diag %>% sum,
+                              table %>% sum) })
+# or use special magrittr syntax-sugar
+table(f1, f2) %>%
+  { divide_by(diag(.) %>% sum,
+              sum(.)) }
+```
+
+### full package function lookup
+
+to use full package path to function, use paratheses to avoid an exeception
+
+```{r "magrittr package function lookup qwirk"}
+c(1, NULL, 3, NA, 5) %>% (purrr::compact)
+
+# there's no problems if you're using paratheses after the function though, so if there's extra params, piping works as usual
+c(1, NULL, 3, NA, 5) %>% purrr::compact(.)
+
+# or with extra parameters
+zeroPaster <- function(e1, e2) paste0(e2, e1)
+list(1:3, letters[1:3]) %>% purrr::pmap(.f = zeroPaster)
+# list(1:3, letters[1:3]) %>% purrr::pmap(.l = ., .f = function(e1, e2) paste0(e2, e1)) # also works
+1:3 %>% purrr::map2(letters[1:3], zeroPaster)
+```
+

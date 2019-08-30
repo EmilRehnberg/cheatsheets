@@ -1,0 +1,46 @@
+
+```{r devtools, child="devtools.Rmd", cache=FALSE}
+```
+
+```{r dplyr, child="dplyr.Rmd", cache=FALSE}
+```
+
+```{r forcats-vignette, child="forcats.Rmd", cache=FALSE}
+```
+
+```{r glue, child="glue.Rmd", cache=FALSE}
+```
+
+```{r magrittr, child="magrittr.Rmd", cache=FALSE}
+```
+
+```{r purrr, child="purrr.Rmd", cache=FALSE}
+```
+
+```{r pwr, child="pwr.Rmd", cache=FALSE}
+```
+
+```{r rlang, child="rlang.Rmd", cache=FALSE}
+```
+
+```{r rsqlserver, child="rsqlserver.Rmd", cache=FALSE}
+```
+
+```{r testthat, child="testthat.Rmd", cache=FALSE}
+```
+
+```{r tibble, child="tibble.Rmd", cache=FALSE}
+```
+
+```{r tibyr, child="tidyr.Rmd", cache=FALSE}
+```
+
+```{r tidytext, child="tidytext.Rmd", cache=FALSE}
+```
+
+```{r XLconnect, child="xlconnect.Rmd", cache=FALSE}
+```
+
+```{r yaml, child="yaml.Rmd", cache=FALSE}
+```
+

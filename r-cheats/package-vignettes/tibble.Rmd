@@ -1,0 +1,48 @@
+## tibble
+
+### Overview
+
+Overview of tibble package.
+
+### use-case
+
+use instead of `data.frame` since it's more performant and less qwirky
+
+- A `tibble` never changes the input type.
+    - No more worry of characters being automatically turned into strings.
+- A `tibble` can have columns that are lists.
+- A `tibble` can have non-standard variable names.
+    - can start with a number or contain spaces.
+    - To use this refer to these in a backtick.
+- It only recycles vectors of length 1.
+- It never creates row names.
+
+```{r "tibble"}
+library(tibble)
+
+a <- 1:5
+tibble(a, b = a * 2) # similar to data.frame
+
+lst(n = 5, x = runif(n))
+```
+
+`tibble` never coerces its inputs
+
+```{r}
+str(tibble(letters))
+str(tibble(x = list(diag(1), diag(2))))
+```
+
+or munges column names
+
+```{r}
+tibble(`a + b` = 1:5)
+```
+
+With the SE version, you give it a list of formulas/expressions
+
+```{r}
+tibble_(list( x = ~1:10
+             ,y = quote(x * 2)))
+```
+

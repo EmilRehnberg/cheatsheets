@@ -1,0 +1,229 @@
+### Overview
+
+section for working with lists
+
+### Subsetting
+
+Subset / Select specific elements in a list.
+
+Use single square brackets and use numerical index >.<
+
+TODO: Add Helper for this??
+
+```{r "list select"}
+Harman23.cor[c(2,3)] %>% str
+```
+
+using names to exclude / include list elements
+
+```{r "named list subsetting"}
+include.list <- function(vctr, elements) vctr[vctr %>% names %in% elements]
+exclude.list <- function(vctr, elements) vctr[! vctr %>% names %in% elements]
+l1 <-
+  list(
+     qsec = 2
+    ,mpg = 3
+    ,disp = 4
+    ,vs = 5
+    ,wt = 6
+    ,am = 7
+   )
+
+l1 %>% include(c("qsec", "vs", "am")) %>% str
+l1 %>% exclude(c("qsec", "vs", "am")) %>% str
+```
+
+### combining
+
+adding / appending / pushing / concatenating lists can be done with `append`
+
+```{r "combing lists"}
+
+la <- list(a = 1:2, rr = runif(4))
+lb <- list(b = 3)
+append(la, lb)
+
+```
+
+same with tibble
+
+```{r}
+
+library(tibble)
+la <- lst(a = 1:2, rr = runif(4))
+lb <- lst(b = 3)
+append(la, lb)
+
+```
+
+lists with overlapping object names will still merge (not overwrite) and extraction gets iffy
+
+```{r "combining list gotcha"}
+
+la <- list(a = 1:2, rr = runif(4))
+lr <- list(rr = 3)
+(ll <- append(la, lr))
+# grabs the first object with corresponding name. use index to access the later "rr"
+ll[["rr"]]
+
+```
+
+tibble is consistent with list
+
+```{r}
+
+la <- tibble::lst(a = 1:2, rr = runif(4))
+lr <- tibble::lst(rr = 3)
+(ll <- append(la, lr))
+ll[["rr"]]
+
+purrr::update_list(la, !!! lr) # use purrr::update_list with splicing !!! / UQS()
+
+```
+
+
+
+### multi-layer lists
+
+build larger lists and iterate with them
+
+```{r "multi-layer lists"}
+
+library(magrittr)
+dates <-
+  list( day1 = "2015-12-12"
+       ,day2 = "2016-07-12"
+       ,day3 = "2014-01-03") %>%
+    sapply(as.Date, simplify = FALSE)
+wkdays <- dates %>% sapply(weekdays, simplify = FALSE)
+mnths <- dates %>% sapply(months, simplify = FALSE)
+
+```
+
+How do we combine these in one named list?
+
+```{r}
+
+mapply(FUN = function(dta, name){
+         list( dta = dta
+              ,weekday = wkdays[[name]]
+              ,month = mnths[[name]]
+              )
+       }
+  ,dates
+  ,names(dates)
+  ,SIMPLIFY = FALSE
+  )
+
+```
+
+or even better
+
+```{r}
+
+dd <- dates %>% sapply(function(dta){list(date = dta)}, simplify = FALSE)
+dd %>%
+  sapply(function(lst){
+           append(lst, list(weekday = lst$date %>% weekdays))
+          }, simplify = FALSE)
+
+```
+
+or more succinct if it makes sense
+
+```{r}
+
+dates %>%
+  sapply(function(dta){
+           list( date = dta
+                ,weekday = dta %>% weekdays)
+          }, simplify = FALSE)
+
+```
+
+use tibble and purrr
+
+```{r "multi-layers with purrr and tibble"}
+library(tibble)
+library(purrr)
+dates %>%
+  as.tibble %>%
+  map(function(date){
+        lst( date = date
+            ,weekday = date %>% weekdays)
+       }) # %>% as.tibble
+
+```
+
+multiple arguments to map does NOT work as expected
+
+```{r}
+
+dates %>%
+  as.tibble %>%
+  map(dates %>% names
+      ,.f = function(date, dayLabel){
+        lst( date = date
+            ,month = date %>% months
+            ,label = dayLabel)
+      })
+
+```
+
+mix nested lists and vectors
+
+```{r}
+datesList <-
+  dates %>%
+    map(function(date){
+      lst( date = date
+          ,meta = lst( weekday = date %>% weekdays)
+         )
+     })
+
+datesList %>% map(function(ddt){
+    ddt$meta %<>% append(list(month = ddt$date %>% months))
+    ddt
+   })
+
+```
+
+### iteration and names
+
+preserving names in the returning list
+
+```{r "lists and preserving names"}
+library(magrittr)
+dayList <- list(Day1 = 12, Day2 = 34, `Day 3` = 23)
+sapply(dayList, sqrt, simplify = FALSE)
+```
+
+accessing list item name inside function
+
+```{r "list item access from inside function"}
+
+dayPrinter <- function(dta, listName) paste0(listName, ": ", dta)
+Map(dayPrinter
+    ,dayList
+    ,names(dayList))
+
+```
+
+or with `mapply`, since `Map` is directly using `mapply`
+
+```{r}
+
+mapply(FUN = dayPrinter, dayList, names(dayList), SIMPLIFY = FALSE)
+
+```
+
+use a function to remove the boiler plate
+
+```{r}
+
+mapplyWithNames <- function(lst, FUN) mapply(FUN = FUN, lst, names(lst), SIMPLIFY = FALSE)
+dayList %>% mapplyWithNames(dayPrinter)
+
+```
+
+

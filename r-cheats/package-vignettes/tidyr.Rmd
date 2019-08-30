@@ -1,0 +1,46 @@
+## tidyr
+
+### Overview
+
+Usage basics for this data-munging library
+
+### gather
+
+unpivot a data frame. i.e. turn columns into rows. Will use the WHOLE data-frame, so remove columns you don't want in the final result.
+
+```{r tidyr::gather}
+library(magrittr)
+stocks <- data.frame(
+  time = as.Date('2009-01-01') + 0:7,
+  dayNum = 1:8,
+  X = rnorm(8, 0, 1),
+  Y = rnorm(8, 0, 2),
+  Z = rnorm(8, 0, 4)
+)
+stocks %>% str
+
+stocks %>%
+  tidyr::gather( stock # name of the unpivoted data label
+                ,price # name of the unpivoted data value
+                ,-c(time, dayNum)) # REMOVE the columns you still want aggregates for
+```
+
+### spread
+
+pivot a data frame. i.e. turn a factor column with numeric column and return numeric columns for each factor
+
+```{r tidyr::spread}
+library(magrittr)
+stocks <- data.frame(
+   time = as.Date('2009-01-01') + 0:7
+  ,dayNum = 1:8
+  ,stock = c("X", "Y", "Z")
+  ,price = rnorm(3*8)
+)
+stocks %>% str
+
+stocks %>%
+  tidyr::spread( stock  # name of the factor column to pivot
+                ,price) # name of the numeric column to pivot
+```
+

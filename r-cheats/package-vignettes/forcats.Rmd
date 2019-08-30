@@ -1,0 +1,62 @@
+# forcats
+
+learn more in [R for data science](https://r4ds.had.co.nz/factors.html)
+
+## load data for munging
+
+```{r}
+
+data(starwars, package = "dplyr")
+
+```
+
+## Usage
+
+### Merge small categories
+
+Merge/Lump small categories with `forcats::fct_lump`
+
+```{r}
+
+starwars %>%
+  dplyr::filter(!is.na(species)) %>%
+  dplyr::count(species, sort = TRUE)
+
+# merge small categories
+
+starwars %>%
+  dplyr::filter(!is.na(species)) %>%
+  dplyr::mutate(species = forcats::fct_lump(species, n = 3)) %>%
+  dplyr::count(species)
+
+```
+
+### Relevel factor based on frequencies
+
+This is useful for plotting
+
+```{r}
+
+library(ggplot2)
+ggplot(starwars, aes(x = eye_color)) +
+  geom_bar() +
+  coord_flip()
+
+starwars %>%
+  dplyr::mutate(eye_color = forcats::fct_infreq(eye_color)) %>%
+  ggplot(aes(x = eye_color)) +
+  geom_bar() +
+  coord_flip()
+
+```
+
+## Appendix
+
+### Installation
+
+```{r, eval = FALSE}
+
+devtools::install_github("tidyverse/forcats")
+
+```
+

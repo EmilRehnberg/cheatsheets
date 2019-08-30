@@ -1,0 +1,41 @@
+### parsing
+
+parsing dates. `strftime` is a wrapper for `format.POSIXct` and `strptime` for `POSIXct`
+
+```{r date_parsing}
+strptime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") # creates a `POSIXlt POSIXt`
+strftime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") # creates a `character`
+strptime("01:30:00", "%H:%M:%S")
+strptime("20160927", "%Y%m%d")
+strptime(20160927, "%Y%m%d")
+strptime(20160927, "%Y%m%d") %>% weekdays
+as.POSIXct("2011-03-27 01:30:00")
+as.POSIXct("2011-03-27 01:30:00") %>% class
+as.POSIXct("2011-03-27 01:30:00") %>% class
+as.POSIXlt("2011-03-27 01:30:00") %>% unclass %>% unlist
+```
+
+### extracting data
+
+```{r "date data extracting"}
+strptime("20160927", "%Y%m%d") %>% weekdays
+as.POSIXct("2011-03-27 01:30:00") %>% months
+strptime("2011-03-27 01:30:00", "%Y-%m-%d %H:%M:%S") %>% format("%H")
+```
+
+### combining date & time
+
+```{r}
+library(magrittr)
+d1 <- as.Date("1970-10-12")
+t1 <- "10:40"
+paste(d1, t1) %>% as.POSIXct
+```
+
+### weeks
+
+```{r}
+today <- Sys.Date()
+format(today, format = "%Y-%W")
+```
+

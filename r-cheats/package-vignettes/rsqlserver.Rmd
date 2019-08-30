@@ -1,0 +1,61 @@
+## RSQLServer
+
+### Overview
+
+Overview for the `RSQLServer` package, package used for connecting R and MS SQL Server
+
+### workflow
+
+```{r "RSQLServer workflow", eval = FALSE}
+oboedbConnect <- function() {
+  DBI::dbConnect(RSQLServer::SQLServer()
+                 ,server = "OBOE"
+                 ,database = "Oboe"
+                 ,file = "~/sql.yml" # file for sql settings and credentials
+                 )
+}
+```
+
+SELECTS and grab data
+
+```{r, eval = FALSE}
+n <- 5L
+statusQuery <- dbplyr::build_sql("SELECT TOP ", n, " * FROM [Oboe].[dbo].[BookingStatus_lkp]")
+DBI::dbGetQuery(oboedbConnect(), statusQuery)
+```
+
+complex SELECTS
+
+```{r, eval = FALSE}
+complicatedSelectQuery <- "
+DECLARE @nstat INTEGER = (SELECT 7);
+
+SELECT TOP (@nstat) *
+FROM [Oboe].[dbo].[BookingStatus_lkp]
+"
+DBI::dbGetQuery(oboedbConnect(), complicatedSelectQuery)
+```
+
+INSERTs with `dbExecute`
+
+```{r, eval = FALSE}
+DBO::dbExecute(oboedbConnect(), "INSERT INTO cars (speed, dist) VALUES (1, 1), (2, 2), (3, 3);")
+```
+
+example sql settings file
+
+```
+OBOE:
+    server: 10.XX.Y.ZZZ
+    port: &port 1433
+    type: &type sqlserver
+    user: etr
+    password: &pass blabla
+DW:
+    server: 10.RR.S.TTT
+    port: *port
+    type: *type
+    user: etr2
+    password: *pass
+```
+

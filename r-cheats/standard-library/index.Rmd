@@ -1,0 +1,465 @@
+## Overview
+
+Looking at functions from e.g. `base` and `stats` packages that are loaded by default R.
+
+## Allocation
+
+as in allocation of empty objects / place holders
+
+```{r "place holder allocation"}
+vector("integer", 6)
+vector("double", 7)
+vector("character", 8)
+vector("logical", 3)
+```
+
+## File Manipulation
+
+Working with files. Checking existance, copy `cp`, removing `rm`, appending etc.
+
+```{r "file-manipulation"}
+library(magrittr)
+tmpDir <- file.path("", "tmp", "r-file-manipulation")
+dir.exists(tmpDir)
+dir.create(tmpDir)
+dir.exists(tmpDir)
+list.files(tmpDir) # return empty character atomic vector
+
+filePath1 <- tmpDir %>% file.path("A.md")
+filePath2 <- tmpDir %>% file.path("B.md")
+filePath3 <- tmpDir %>% file.path("C.md")
+cat("file A\n", file = filePath1)
+file.exists(filePath2)
+cat("file B\n", file = filePath2)
+file.exists(filePath2)
+file.append(filePath1, filePath2)
+file.info(filePath1)
+# file.show(filePath1) # opens file, only run if in an interactive session
+file.copy(filePath1, filePath3)
+file.remove(filePath1, filePath2, filePath3)
+file.remove(tmpDir) # works on EMPTY directories
+```
+
+## Extract
+
+aka `[`. Use `drop` to keep the matrix.
+
+```{r "base:extract"}
+(m <- matrix(1:9, nrow = 3, dimnames = list(c("a", "b", "c"), LETTERS[1:3])))
+m[1, ] # first row of m (atomic vector)
+m[1, , drop = FALSE] # first row of m still as matrix
+```
+
+## replications
+
+replicate elements of vectors and lists
+
+```{r "base::rep"}
+rep(1:4, 2)
+rep(1:4, each = 2)       # not the same.
+rep(1:4, c(2,2,2,2))     # same as second.
+rep(1:4, c(2,1,2,1))
+rep(1:4, each = 2, len = 4)    # first 4 only.
+rep(1:4, each = 2, len = 10)   # 8 integers plus two recycled 1's.
+rep(1:4, each = 2, times = 3)  # length 24, 3 complete replications
+
+(x <- LETTERS[1:4] %>% setNames(letters[1:4]) %>% as.factor)
+rep(x, times = 2)
+rep(x, each = 2)
+rep.int(x, times = 2)  # no names
+rep(x, len = 10)
+rep_len(x, length.out = 10) # no names
+```
+
+## iterate over data frame variables
+
+use `base::seq_along` in a for loop to iterate over a data frame's variables / columns
+
+```{r}
+(scaledArrests <- USArrests) %>% head
+for(i in seq_along(USArrests)){
+  scaledArrests[[i]] <- scale(USArrests[[i]] %>% as.numeric) %>% round(3)
+}
+scaledArrests %>% head
+```
+
+be aware that the same thing (minus the row names) can be acheived much more nicely with `sapply`
+
+```{r}
+USArrests %>% dplyr::select(-state) %>% sapply(scale) %>% as.data.frame %>% head
+```
+
+## reduce function
+
+`base::Reduce`
+
+Common Higher-Order Functions in Functional Programming Languages (similar to Common Lisp's `(reduce)`)
+
+Simple example
+
+```{r}
+add <- function(x) Reduce("+", x)
+add(1:4)
+```
+
+Custom cumulative function. Approximation for pi. `right` argument determines if process starts from the right (or from the left).
+
+```{r}
+c(3, 7, 15, 1, 292) %>%
+  Reduce(f = function(incr, acc) incr + 1 / acc, right = TRUE)
+```
+
+## pattern matching
+
+`base::switch`
+
+exact pattern matching in R
+
+```{r}
+centre <- function(x, type) {
+  switch(type,
+         mean = mean(x),
+         median = median(x),
+         trimmed = mean(x, trim = .1))
+}
+x <- rcauchy(10)
+centre(x, "mean")
+centre(x, "median")
+centre(x, "trimmed")
+```
+
+## split df to list
+
+e.g. split a `data.frame`, rows / observations to list. NOTE: second argument is a "group" e.g. `1:10`. If you in this case have a data frame with ten rows, each row will be in an entry in the returned list.
+
+```{r "listify observations to iterate over rows"}
+data.frame(a = 1:10
+           ,b = 11:20
+           ,c = 51:60) %>%
+  split(seq(nrow(.)))
+```
+
+or by some other grouping
+
+```{r}
+split(airquality, airquality$Month)
+```
+
+## work inside closed data environment
+
+`base::with` and `base::within`
+
+```{r}
+with(airquality, { cor(Temp, Ozone, use = "complete") })
+
+aq <- within(airquality, {     # Notice that multiple vars can be changed
+    lOzone <- log(Ozone)
+    Month <- factor(month.abb[Month])
+    cTemp <- round((Temp - 32) * 5/9, 1) # From Fahrenheit to Celsius
+    S.cT <- Solar.R / cTemp  # using the newly created variable
+    rm(Day, Temp)
+})
+head(aq)
+```
+
+## system information
+
+invoke system calls / command line. check system info and library / package info.
+
+```{r "OS calls"}
+system("date")
+system("echo $USER")
+
+Sys.getenv()
+
+Sys.info() %>% as.matrix
+
+.libPaths()
+```
+
+useful for installing packages to a specific library / folder: `install.packages("magrittr", lib = .libPaths()[2])`
+
+default lib parameter is `.libPaths()[1]` which tends to be user specific
+
+`R_LIBS_USER` sets the personal library for a user.
+
+`Sys.unsetenv("R_LIBS_USER")` can unset this so you use a global library path instead
+
+R home
+
+```{r}
+R.home()
+Sys.getenv("R_HOME")
+```
+
+## Citation
+
+```{r message=FALSE}
+require(magrittr)
+```
+
+```{r}
+citation() %>% toBibtex # defaults to R-documentation
+citation("magrittr") %>% toBibtex
+```
+
+## package version
+
+check the version of an available package
+
+```{r "packageVersion"}
+packageVersion("magrittr")
+```
+
+## set reference level
+
+`stats:relevel`
+
+to set reference/base/stardard/default level for e.g. a logistic regression use `relevel` with the `ref` flag
+
+```{r}
+warpbreaks %>% str
+warpbreaks$tension <- relevel(warpbreaks$tension, ref = "M")
+warpbreaks %>% str
+```
+
+## scientific notation
+
+print in scientific notation
+
+```{r}
+library(magrittr)
+1234567890123
+123456
+123456 %>% format(scientific = TRUE)
+```
+
+you can also tinker with the `options(scipen=)` option
+
+## print declared variable
+
+use parentheses to return / print result during variable declaration
+
+```{r}
+(a <- 1)
+a
+```
+
+## dicotomize
+
+discretize continuous variable. (turn continuous variable discrete)
+
+```{r}
+Z <- stats::rnorm(10000)
+table(cut(Z, breaks = -6:6))
+
+breaks <- c(-3, 1, 5) # one more break than labels
+labels <- c("low", "high")
+U <- runif(10, min=-3, max=5)
+cut(U,
+    breaks = breaks,
+    labels = labels,
+    ordered_result = TRUE, # for ordered factors (not always well supported)
+    include.lowest = TRUE)
+```
+
+## matching
+
+`match` et. al match on the first character forward.
+
+```{r}
+1:10 %in% c(1,3,5,9)
+charmatch("m",   c("mean", "median", "mode"))
+charmatch("med", c("mean", "median", "mode"))
+```
+
+#### using grep
+
+matching character strings/vectors using regexes or character strings. use `value` flag to return the actual matches and not the index.
+
+```{r}
+txt <- c("arm", "foot", "lefroo", "bafoobar")
+grep("foo", txt)
+grep("foo", txt, value = TRUE)
+```
+
+matching two exact expressions, either or
+
+```{r}
+library(magrittr)
+txt <-
+  c( "The", "licenses", "for", "most", "software", "are", "designed", "to", "take", "away", "your", "freedom", "to", "share"
+    ,"and", "change", "it.", "", "By", "contrast,", "the", "GNU", "General", "Public", "License", "is", "intended", "to"
+    ,"guarantee", "your", "freedom", "to", "share", "and", "change", "free", "software", "--", "to", "make", "sure"
+    ,"the", "software", "is", "free", "for", "all", "its", "users")
+```
+
+returns index
+
+```{r}
+txt %>% grep(pattern = "ak")
+txt %>% grep(pattern = "ak|an")
+```
+
+returns value
+
+```{r}
+txt %>% grep(pattern = "ak", value = TRUE)
+txt %>% grep(pattern = "ak|an", value = TRUE)
+```
+
+returns logical (grep logical)
+
+```{r}
+txt %>% grepl(pattern = "ak")
+txt %>% grepl(pattern = "ak|an")
+```
+
+matching on multiple character strings inside the same character string
+
+```{r}
+txt %>% grep(pattern = "s.*ar", value = TRUE)
+
+txt %>% grep(pattern = "ra", value = TRUE)
+txt %>% grep(pattern = "n.*ra", value = TRUE)
+```
+
+matching on end of string by using dollar sign `$` at the end of the pattern
+
+```{r}
+strs <-
+  c("Product.Age", "Salesforce.Center", "Category", "Standard.Months",
+    "FY15.10", "FY15.11", "FY15.12", "FY16.01", "FY16.02", "FY16.03",
+    "FY16.04", "ofc-FY16.05", "ofc-FY16.06", "FY16.07", "ofc-FY16.08", "FY16.09",
+    "FY16.10", "FY16.11", "FY16.12", "FY17.01", "FY17.02", "FY17.03",
+    "FY17.04", "FY17.05", "FY17.06", "FY15.09.1",
+    "FY15.10.1", "FY15.11.1", "FY15.12.1", "FY16.01.1", "FY16.02.1",
+    "FY16.03.1", "FY16.04.1", "ofc-FY16.05.1", "ofc-FY16.06.1", "FY16.07.1",
+    "FY16.08.1", "FY16.09.1", "FY16.10.1", "ofc-FY16.11.1", "ofc-FY16.12.1",
+    "FY17.01.1", "FY17.02.1", "FY17.03.1", "FY17.04.1", "FY17.05.1",
+    "FY17.06.1")
+strs %>% grep(pattern = "(FY\\d{2}).(\\d{2})$", value = TRUE)
+```
+
+matching on start of string by using caret `^` at the start of the pattern
+
+```{r}
+strs %>% grep(pattern = "^(FY\\d{2}).(\\d{2})$", value = TRUE)
+```
+
+## padding
+
+padding with zeros
+
+```{r}
+sprintf("%04d", 20)
+```
+
+or less stable
+
+```{r}
+sprintf("%02s", c("10", "8", "12"))
+```
+
+case with hours and minutes, similar to a clock
+
+```{r "sprintf clock"}
+sprintf("%02s:%02s", 0:5, 15)
+sprintf("%02s:%02s", 0:5, c(5,25,55)) # not expected
+sprintf("%02s:%02s", rep(0:5, each = 3), c(5,25,55)) # expected
+
+minutesAsClock <-
+  function(minutes)
+    sprintf( "%02s:%02s"
+            ,minutes %>% magrittr::divide_by_int(60)
+            ,minutes %>% magrittr::mod(60)) # modulo `%%`
+(0:12*60+40) %>% minutesAsClock
+```
+
+Windows
+
+```{r "sprintf on windows"}
+
+sprintf("%02s", c("10", "8", "12")) # doesn't return what you'd expect on windows >.<
+# sprintf("%02d", c("10", "8", "12")) # however this does! using `d`
+# not sure it works as intended on Unix systems though
+
+```
+
+## substr
+
+can extract characters based on position
+
+```{r}
+c('201611', '201304') %>% substr(5,6)
+c('201611', '201304') %>% substr(1,4)
+```
+
+Can be working similar to T-SQL's `LEFT`-function. No need to use regex
+
+Can also be thought of as deleting parts of strings / characters.
+
+## numerical characteristics of the machine
+
+`.Machine` has a lot of numerical characteristics
+
+e.g. the rounding error
+
+```{r}
+.Machine$double.eps
+.Machine
+```
+
+## setting names for arrays
+
+use `stats::setNames`
+
+```{r}
+setNames( 1:3, c("foo", "bar", "baz") )
+setNames( 1:3, nm = c("foo", "bar", "baz") )
+setNames( nm = c("foo", "bar", "baz") ) # Special case
+```
+
+or `base::structure`; NOTE: you need to name any arguments, unlike `setNames`.
+
+```{r}
+structure( 1:3, nm = c("foo", "bar", "baz") ) # don't use `nm`
+structure( 1:3, names = c("foo", "bar", "baz") )
+# structure( 1:3, c("foo", "bar", "baz") ) # Error in structure(1:3, c("foo", "bar", "baz")) : attributes must be named
+```
+
+## scale
+
+for normalizing / standardizing variables in `data.frame`
+
+`scale` takes three arguments, the data, center and scale.
+
+- `center` what you subtract from the values (unless set to `FALSE`). Default is the mean of the column in question.
+- `scale` is the demoninator (unless set to `FALSE`). Default is the standard deviation.
+
+```{r "scale function"}
+
+airquality %>% summary
+
+airquality %>% scale %>% summary # NOTE: the means and symmetrics between min/max
+
+```
+
+function to scale columns to `[0,1]` unit range
+
+TODO: add scale function to go between `[-1,1]`
+
+```{r}
+
+unitScale <- function(dta)
+  scale(dta
+        ,center = dta %>% purrr::map_dbl(min, na.rm = TRUE)
+        ,scale = dta %>% purrr::map(range, na.rm = TRUE) %>% purrr::map_dbl(diff)
+        )
+airquality %>% unitScale %>% summary
+
+```
+
+```{r regexes, child="regexes.Rmd", cache=FALSE}
+```
+

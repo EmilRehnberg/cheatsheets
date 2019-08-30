@@ -1,0 +1,13 @@
+## yaml
+
+Overview of the yaml pacakge
+
+### Usage
+
+Very useful for config files e.g. with credentials. The default argument to `read_yaml` is a file path to yaml.
+
+```{r }
+
+yaml::read_yaml(text = "{ name: John Smith, Age: 33 }")
+
+```

@@ -1,0 +1,209 @@
+
+
+Classification in Kyphosis dataset like we did with `rpart`
+
+```{r "party::ctree on Kyphosis data"}
+library(rpart)
+library(partykit) # library(party)
+ctree(Kyphosis ~ Age + Number + Start
+      ,data = kyphosis) %T>% print %>% plot(main = "Conditional Inference of Kyphosis data")
+```
+
+regression
+
+```{r "party::ctree regression"}
+set.seed(290875)
+
+ozoneDt <- airquality %>% dplyr::filter(!is.na(Ozone))
+airct <-
+  ctree( Ozone ~ .
+        ,data = ozoneDt)
+airct %T>% print %>% plot
+```
+
+you can grab the data in the different segments clusters using `party::where`. using this you can extract cluster data or aggregates.
+
+```{r "party::ctree segments data/aggregates"}
+ozoneDt %>%
+  dplyr::mutate(segment = predict(airct)) %>%
+  dplyr::group_by(segment) %>%
+  dplyr::summarise(avgOzone = mean(Ozone, na.rm = TRUE))
+
+```
+
+Mean squared error
+
+```{r, eval = FALSE}
+mean((airq$Ozone - predict(airct))^2)
+```
+
+extract observation terminal node ID using either `predict` or `where`
+
+```{r "party::ctree regression data extraction"}
+airct %>% predict(type = "node") # airct %>% party::where # only in party
+```
+
+```{r "party::ctree BinaryTree handling", eval = FALSE}
+airct %>% nodes(4) # extract nodes # party only
+airct %>% response %>% summary # extract the response variable from the formula. # party only
+```
+
+nominal variable classification
+
+```{r "party::ctree classification"}
+irisct <- ctree(Species ~ .,data = iris)
+irisct %T>% print %>% plot
+table(predict(irisct), iris$Species)
+```
+
+response of tree for the given observations (probabilities of levels in Species)
+
+```{r, eval = FALSE}
+treeresponse(irisct, newdata = iris[c(1,61, 120),]) # party only
+```
+
+ordinal regression. `ME` from the `mammoexp` data frame is an ordinal factor.
+
+```{r "party::ctree ordinal regression"}
+data("mammoexp", package = "TH.data")
+mammoct <- ctree(ME ~ ., data = mammoexp)
+plot(mammoct)
+```
+
+response of tree for the given observations (probabilities of levels in ME)
+
+```{r, eval = FALSE}
+treeresponse(mammoct, newdata = mammoexp[1:4,]) # party only
+```
+
+survival analysis.
+
+```{r "party::ctree survival"}
+data("GBSG2", package = "TH.data")
+GBSG2 %>% str
+GBSG2ct <- ctree(survival::Surv(time, cens) ~ .,data = GBSG2)
+plot(GBSG2ct)
+
+```
+
+the tree response here is a whole survival fit (survfit object, e.g. can be plotted)
+
+```{r, eval = FALSE}
+treeresponse(GBSG2ct, newdata = GBSG2[1:2,]) # party only
+```
+
+options (see `?ctree_control` for options)
+
+- `mincriterion` for significance level
+- `testtype` for multiple testing method
+- `minbucket` for smallest possiple bucket
+- `maxsurrogate` unsure!
+
+```{r}
+data(plantTraits, package = "cluster")
+ctree( height ~ .
+      ,data = plantTraits
+      ,mincriterion = .9
+      # ,testtype = "Teststatistic"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,testtype = "Bonferroni"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,mincriterion = .8
+      ,testtype = "Bonferroni"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,minbucket = 10
+      # ,testtype = "Teststatistic"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,maxdepth = 3 #,testtype = "Teststatistic"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,mincriterion = .9 #,testtype = "Teststatistic"
+      ) %>% plot
+
+ctree( height ~ .
+      ,data = plantTraits
+      ,mincriterion = .9 ,maxsurrogate = 2 # ,testtype = "teststatistic"
+      ) %>% plot
+```
+
+extracting node splits conditions for each terminal node.
+
+[SO link](https://stackoverflow.com/questions/21443203/ctree-how-to-get-the-list-of-splitting-conditions-for-each-terminal-node)
+
+```{r "install emilrehnberg/party.readpaths", eval = FALSE}
+devtools::install_github("emilrehnberg/party.readpaths")
+```
+
+```{r "generated data and ctree"}
+shiftFirstPart <- function(vctr, divideBy, proportion = .5){
+  vctr[vctr %>% length %>% multiply_by(proportion) %>% round %>% seq] %<>% divide_by(divideBy)
+  vctr
+}
+set.seed(11)
+n <- 13000
+gdt <-
+  data.frame( is_buyer = runif(n) %>% shiftFirstPart(1.5) %>% round %>% factor(labels = c("no", "yes"))
+             ,age = runif(n) %>% shiftFirstPart(1.5) %>%
+               cut(breaks = c(0, .3, .6, 1), include_lowest = TRUE, ordered_result = TRUE, labels = c("low", "mid", "high"))
+             ,city = runif(n) %>% shiftFirstPart(1.5) %>%
+               cut(breaks = seq(0,1,.2), include_lowest = TRUE, labels = c("Chigaco", "Boston", "Memphis", "LA", "ATL"))
+             ,point = runif(n) %>% shiftFirstPart(1.2)
+             )
+gct <- party::ctree( is_buyer ~ ., data = gdt)
+
+party.readpaths::readCtreePaths(gct, gdt) # dts <- gdt; ct <- gct
+gct %>% plot
+
+```
+
+In `partykit`
+
+```{r, eval = FALSE}
+partykit:::.list.rules.party(ct)
+```
+
+```{r}
+detach(package:partykit)
+airq <- subset(airquality, !is.na(Ozone))
+act <-
+  party::ctree( Ozone ~ .
+        ,data = airq # ,maxsurrogate = 3 # partykit
+        ,controls = party::ctree_control(maxsurrogate = 3) # party
+        )
+party.readpaths::readCtreePaths(act, airq) # party only
+
+data(plantTraits, package = "cluster")
+pct <- party::ctree( height ~ .  ,data = plantTraits)
+party.readpaths::readCtreePaths(pct, plantTraits)
+```
+
+prediction for the `party` package.
+
+terminal nodes & response data prediction
+
+```{r "prediction on party::ctree objects"}
+pct %>% party::where(newdata = plantTraits[1:10,])
+pct %>% party::treeresponse(newdata = plantTraits[1:10,]) # not sure what this is.. >.<
+```
+
+response prediction
+
+```{r}
+pct %>% predict(newdata = plantTraits[1:10,])
+```
+
+

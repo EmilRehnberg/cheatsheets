@@ -1,0 +1,323 @@
+## Overview
+
+notes for installing packages
+
+## unable to load shared object
+
+The `libcoin` package has some shared objects with the `mvtnorm` package.
+So say that you install the `libcoin` package an get an error similar to `unable to load shared object: PATH/mvtnorm.so` appears during installation.
+
+1. restart console
+2. install the `mvtnorm` package including the `.so`
+3. install the `libcoin` package
+
+## after R upgrade
+
+try to run `sudo R CMD javareconf` in the terminal.
+
+```{r, eval = FALSE}
+install.packages(c("devtools", "magrittr", "rJava", "dplyr"))
+library(magrittr)
+installFromCran <- function(pkgs) devtools::install_github(pkgs %>% paste("cran", ., sep = "/"))
+partyPkgs <- c('mvtnorm', 'modeltools', 'zoo', 'sandwich', 'strucchange', 'TH.data', 'survival', 'multcomp', 'coin', 'party')
+tibblePkgs <- c('rlang', 'tibble')
+roxygen2Pkgs <- c('stringi', 'stringr', 'brew', 'backports', 'rprojroot', 'desc', 'commonmark', 'xml2', 'roxygen2')
+testthatPkgs <- c('crayon', 'praise', 'testthat')
+rattlePkgs <- c("RGtk2", "rattle")
+lintrPkgs <- c( "registry", "iterators", "pkgmaker", "registry", "rngtools", "gridBase", "foreach", "doParallel"
+               ,"NMF", "irlba", "rex", "stringdist", "igraph", "lintr")
+rmdPkgs <- c("htmltools", "bitops", "caTools", "base64enc", "rmarkdown")
+xlconnectPkgs <- c('rJava','XLConnectJars', 'XLConnect')
+dplyrPkgs <- c( "bindr", "plogr", "bindrcpp", "glue", "pkgconfig", "rlang", "dplyr" )
+rsqlPkgs <- c("dplyr", "DBI", "dbplyr", "RSQLServer")
+knitrPkgs <- c("evaluate", "highr", "markdown", "yaml", "knitr")
+c( partyPkgs, tibblePkgs, roxygen2Pkgs, testthatPkgs, rattlePkgs, lintrPkgs, rmdPkgs
+  ,xlconnectPkgs, dplyrPkgs, rsqlPkgs, knitrPkgs, "tidyr", "matrixcalc", "dlm", "dbplyr") %>% installFromCran
+
+devtools::install_github(c("emilrehnberg/party.readpaths"))
+devtools::install_github(c("ramnathv/slidify"))
+devtools::install_github(c("ramnathv/slidifyLibraries"))
+```
+
+No longer needed
+
+```{r, eval = FALSE}
+devtools::install_github(c( 'emilrehnberg/party.readpaths', 'jmp75/rClr'
+                           ,"bescoto/RMSSQL", "bescoto/dplyr.mssql"))
+```
+
+copy below for running on server to install packages
+
+```{r, eval = FALSE}
+library(magrittr)
+installFromCran <- function(pkgs) devtools::install_github(pkgs %>% paste("cran", ., sep = "/"))
+dplyrPkgs <- c("bindr", "bindrcpp", "glue", "pkgconfig", "rlang", "dplyr" )
+installFromCran(dplyrPkgs)
+```
+
+## tidyverse
+
+```{r, "tidyverse installation", eval = FALSE}
+
+c("r-dbi/DBI"
+  ,"r-lib/rlang"
+  ,"tidyverse/dplyr"
+  ,"tidyverse/tibble"
+  ,"tidyverse/purrr"
+  ,"tidyverse/dbplyr"
+  ,"cran/rematch" ,"cran/cellranger","tidyverse/readxl"
+ ) %>% devtools::install_github()
+
+c("r-lib/cli","r-lib/crayon"
+  ,"rstudio/rstudioapi"
+  ,"tidyverse/magrittr", "tidyverse/hms"
+  ,"cran/BH", "mdlincoln/clipr" "tidyverse/readr"
+  ,"tidyverse/forcats", "tidyverse/haven", "tidyverse/lubridate"
+  ,"tidyverse/modelr"
+  ,"r-lib/evaluate", "cran/yaml", "cran/markdown", "yihui/xfun", "yihui/highr", "yihui/knitr"
+  ,"cran/base64enc", "eddelbuettel/digest", "cran/htmltools", "cran/jsonlite", "yihui/mime", "cran/tinytex","rstudio/rmarkdown"
+  ,"r-lib/processx" , "r-lib/callr", "r-lib/fs", "edwindj/whisker", "r-lib/withr", "tidyverse/reprex"
+  ) %>% devtools::install_github()
+
+devtools::install_github( "tidyverse/tidyverse" )
+
+```
+
+### tibble
+
+installing `tibble`
+
+```{r, eval = FALSE}
+
+depsLoc <- paste("r-lib", c("crayon", "pillar", "rlang"), sep = "/")
+repoLoc <- "tidyverse/tibble"
+c(depsLoc, repoLoc) %>% devtools::install_github()
+
+```
+
+
+### ggplot2
+
+installation of `ggplot2` using `devtools`
+
+```{r, "ggplot2 installation", eval = FALSE}
+
+devtools::install_github(file.path("cran", c("RColorBrewer", "dichromat", "plyr", "colorspace", "munsell", "labeling", "viridisLite", "gtable", "lazyeval", "reshape2", "scales")))
+devtools::install_github("tidyverse/ggplot2")
+
+```
+
+add-on packages
+
+#### gifski
+
+```{r "gifski installation", eval = FALSE}
+
+depLoc <- "cran/png"
+pkgLoc <- "r-rust/gifski"
+
+c(depLoc, pkgLoc) %>% devtools::install_github(force = TRUE)
+
+```
+
+
+#### gganimate
+
+```{r "gganimate installation", eval = FALSE}
+
+tweenrLocs <- c("cran/farver", "cran/tweenr")
+depsLoc <- c("r-lib/rlang", "r-lib/progress", "tidyverse/glue", tweenrLocs, "tidyverse/ggplot2")
+pkgLoc <- "thomasp85/gganimate"
+c(depsLoc, pkgLoc) %>% devtools::install_github()
+
+```
+
+#### plotly
+
+```{r "plotly installation", eval = FALSE}
+
+depLoc <-
+  c("RcppCore/Rcpp", "rstudio/promises", "rstudio/httpuv", "rstudio/crosstalk", "Rdatatable/data.table", "cran/hexbin"
+    ,"tidyverse/tibble", "r-lib/rlang", "tidyverse/purrr"
+    ,"ramnathv/htmlwidgets", "r-lib/gtable", "tidyverse/ggplot2", "tidyverse/dplyr", "eddelbuettel/digest")
+pkgLoc <- "ropensci/plotly"
+c(depLoc, pkgLoc) %>% devtools::install_github(dependecies=TRUE)
+
+```
+
+## rvest
+
+website scraper package. Needs `xml2` which looks for `xml2-config` and `pkg-config` both which has some shenanigans. Look into them and environment variables if you have issues.
+
+```{r, "rvest installation", eval = FALSE}
+
+c( "r-lib/xml2", "cran/httr", "hadley/rvest") %>% devtools::install_github()
+
+```{r, eval = FALSE }
+c("httpuv", "xtable", "sourcetools", "shiny") %>% paste0("cran/",.) %>% devtools::install_github()
+```
+
+## RODBC
+
+and `RODBCext`. perform before trying to install on mac. look for other solutions on linux/mac.
+
+```
+brew update && brew install unixODBC
+```
+
+## party
+
+install `party`.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/party')
+```
+
+installing `party` dependencies.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/mvtnorm')
+devtools::install_github('cran/modeltools')
+devtools::install_github('cran/zoo')      # sandwich dependency
+devtools::install_github('cran/sandwich')
+devtools::install_github('cran/strucchange')
+devtools::install_github('cran/TH.data')  # multcomp dependency
+devtools::install_github('cran/multcomp') # coin dependency
+devtools::install_github('cran/coin')
+devtools::install_github('cran/party')
+```
+
+## partykit
+
+install `partykit`.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/partykit')
+```
+
+installing `partykit` dependencies.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/Formula')
+```
+
+## roxygen2
+
+```{r, eval = FALSE }
+devtools::install_github('cran/brew')
+devtools::install_github('cran/backports') # rprojroot dependency
+devtools::install_github('cran/rprojroot') # desc dependency
+devtools::install_github('cran/desc')
+devtools::install_github('cran/commonmark')
+devtools::install_github('cran/xml2')
+devtools::install_github('cran/roxygen2')
+```
+
+## testthat
+
+```{r, eval = FALSE }
+
+depsLoc <- c('r-lib/crayon', 'cran/praise')
+pkgLoc <- 'r-lib/testthat'
+c(depsLoc, pkgLoc) %>% devtools::install_github()
+
+```
+
+## rattle
+
+```{r, eval = FALSE }
+devtools::install_github('cran/rattle')
+```
+
+installing `rattle` dependencies. install `gtk+` via brew.
+
+```{r, eval = FALSE }
+devtools::install_github('cran/RGtk2')
+```
+
+## rJava
+
+try to run `sudo R CMD javareconf` in the terminal.
+
+```{r, eval=FALSE , echo=FALSE}
+install.packages("rJava")
+```
+
+## lintr
+
+installing lintr
+
+```{r, eval = FALSE, echo = FALSE}
+devtools::install_github("cran/registry") # pkgmaker dependency
+devtools::install_github("cran/iterators") # foreach dependency
+devtools::install_github( file.path("cran", c( "pkgmaker", "registry", "rngtools", "gridBase", "foreach", "doParallel" ))) # NMF dependencies
+devtools::install_github( file.path("cran", c("NMF", "irlba"))) # igraph dependencies
+devtools::install_github( file.path("cran", c("rex", "stringdist", "igraph")))
+devtools::install_github("cran/lintr")
+
+devtools::install_github( file.path("cran", c("rex", "stringdist", "igraph")))
+devtools::install_github("cran/lintr")
+
+```
+
+## bestglm
+
+installing `bestglm` package, similar to `leaps` but not limited to linear regression.
+
+```{R "bestglm installation", eval = FALSE}
+
+devtools::install_github(file.path("cran", c("glmnet", "grpreg")))
+devtools::install_github("cran/bestglm")
+library(bestglm)
+
+```
+
+## RSQLServer
+
+install `rJava`.
+
+CAREFUL! Do NOT install: `devtools::install_github('agstudy/rsqlserver')`
+
+```{r, eval=FALSE, echo=FALSE }
+install.packages("RSQLServer")
+devtools::install_github('jmp75/rClr') # brew install mono # for this
+devtools::install_github('imanuelcostigan/RSQLServer')
+```
+
+## dplyr.mssql
+
+```{r, eval=FALSE , echo=FALSE}
+devtools::install_github("bescoto/RMSSQL")
+devtools::install_github("bescoto/dplyr.mssql") # this package
+```
+
+Also you'll need these packages: `DBI`, `dplyr`, `RJDBC`, `assertthat`, `dplyr`, `stringr`
+
+If there's a timeout-problem, try changing download method.
+
+```{r, eval=FALSE , echo=FALSE}
+options(download.file.method = "wininet")
+
+devtools::install_github("bescoto/dplyr.mssql", method = "wininet") # works? instead of setting the session options?
+```
+
+if there's problems with stringi, try below (the latter argument is for dealing with the case where the package has no matching version for R)
+
+```{r, eval=FALSE , echo=FALSE}
+R CMD INSTALL stringi_1.1.1.tar.gz --configure-args='--disable-pkg-config'
+```
+
+### Dependency hell
+
+`dplyr`, `RSQLServer` and `dplyr.mssql` has this dependency hell going on ATM (161121). `dplyr.mssql` depends on `dplyr` version 4 but
+latest `RSQLServer` requires >5.0. Downgrade `RSQLServer` and `dplyr` to make `dplyr.mssql` happy.
+
+```{sh, eval=FALSE, echo=FALSE}
+wget https://github.com/imanuelcostigan/RSQLServer/archive/v0.2.0.tar.gz
+R CMD INSTALL v0.2.0.tar.gz
+
+wget https://cran.rstudio.com/src/contrib/Archive/dplyr/dplyr_0.4.3.tar.gz
+R CMD INSTALL dplyr_0.4.3.tar.gz
+
+```
+

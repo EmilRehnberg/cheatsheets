@@ -1,0 +1,233 @@
+
+### Overview
+
+Section for neural nets, gets it's own section due being able to be both Supervised & Unsupervised. AKA Artificial Neural Networks.
+
+Packages
+
+- `neuralnet`
+- `nnet`
+- `DARCH`
+- `deepnet` [cran](https://cran.r-project.org/package=deepnet)
+- `h2o`
+
+### Theory
+
+#### Basics
+
+NN is a network of perceptrons. I.e. functions that take inputs & bias into an "activation function" and that yields an output.
+
+The perceptron includes:
+
+1. linear function
+2. Activation function, transforming the output from the linear function to the desired outcome range.
+
+The outputs are compared to known labels and coefficients/weights are adjusted (via gradient decent) repeatedly until either 1. max number of allowed iterations or 2. an acceptable error rate is hits.
+
+The process of feeding inputs to multiple perceptrons yielding an output is called *feed-forward*. I.e. the units do not form a cycle!
+
+#### Deep networks
+
+aka DNN - deep neural networks
+
+Vladmir Perervenko articles
+
+- [THIRD GENERATION NEURAL NETWORKS: DEEP NETWORKS](https://www.mql5.com/en/articles/1103)
+- [EVALUATION AND SELECTION OF VARIABLES FOR MACHINE LEARNING MODELS](https://www.mql5.com/en/articles/2029)
+- [DEEP NEURAL NETWORK WITH STACKED RBM. SELF-TRAINING, SELF-CONTROL](https://www.mql5.com/en/articles/1628)
+
+### h2o
+
+```{r, echo=FALSE}
+knitr::read_chunk("../package-demos/h2o.R")
+```
+
+#### Overview
+
+- is Java setup requiring JVM
+- the R installation is for an h2o API
+- interface is on the web
+
+- [ui](http://localhost:54321) - after running `h2o::h2o.init`
+- [vignette code examples](https://github.com/h2oai/h2o-3/tree/master/h2o-docs/src/booklets/v2_2015/source/R_Vignette_code_examples)
+- [cran](https://CRAN.R-project.org/package=h2o)
+- [github](https://github.com/h2oai/h2o-3)
+- [DNN use case, handwritten digits](http://didericksen.github.io/deeplearning-r-h2o/)
+
+supports
+
+- Deep Learning
+- Naive Bayes
+- Principal Components Analysis (PCA)
+- K-means
+- Stacked Ensembles
+- Generalized Linear Models (GLM)
+- Gradient Boosting Machine (GBM)
+- Generalized Low Rank Model (GLRM)
+- Distributed Random Forest (DRF)
+- Word2ve
+
+#### Installation
+
+Check version @ [download HP](https://www.h2o.ai/download/)
+
+```{r h2o-pkg-installation, eval = FALSE}
+```
+
+#### Initialization
+
+```{r "h2o-pkg-initialization", eval = FALSE}
+```
+
+#### importing data
+
+to work with data on h2o you need to import/upload data. Import is to a single node e.g. locally, but if you have a cluster you'll have to upload (`h2o.uploadFile()`).
+
+```{r "h2o-pkg-importing-data", eval = FALSE}
+```
+
+#### working w data
+
+```{r "h2o-pkg-working-data", eval = FALSE}
+```
+
+#### Modelling in h2o
+
+GLM in `h2o`
+
+```{r "h2o-pkg-h2o.glm", eval = FALSE}
+```
+
+### deepnet
+
+- package is SUPER bare-bones
+    - only works with matrices
+    - does not use S3/S4 objects
+    - no formulas
+- autoencoder part seems to be supervised
+
+```{r, echo = FALSE}
+knitr::read_chunk("../package-demos/deepnet.R")
+```
+
+```{r deepnet-pkg-example-setup}
+```
+
+feed-forward neural network
+
+```{r deepnet-pkg-training-nn}
+```
+
+deep belief neural network. This function internally uses `rbm.train()` to train a restricted Boltzmann machine (which can also be used individually)
+
+The difference is mainly in the contrastive divergence algorithm that trains the restricted Boltzmann machines.
+It is set via cd, giving the number of iterations for Gibbs sampling inside the learning algorithm.
+[ref](http://www.rblog.uni-freiburg.de/2017/02/07/deep-learning-in-r/)
+
+```{r deepnet-pkg-deep-belief-nn}
+```
+
+Training a Deep neural network with weights initialized by Stacked AutoEncoder
+
+```{r deepnet-pkg-stacked-autoencoder-nn}
+```
+
+use `nn.predict` for predicting using the created from the train functions
+
+```{r deepnet-pkg-nn-predict}
+```
+
+### neuralnet
+
+- does basic NNs
+- overall janky user experience
+    - requires numeric output
+    - no dot formulas
+
+```{r echo = FALSE}
+knitr::read_chunk("../package-demos/islr.R")
+knitr::read_chunk("../package-demos/neuralnet.R")
+```
+
+we will be using the `College` data set and try to predict the `Private` column based on the other columns / features.
+
+NN needs scaled features. Here scale the features to [0,1]
+
+```{r islr-college-data}
+```
+
+```{r neuralnet-pkg-demo}
+```
+
+if want to continue and read [NN blog post](https://www.kdnuggets.com/2016/08/begineers-guide-neural-networks-r.html/2)
+
+Plotting the output. We see the 2 hidden layers, each with 4,3 neurons / nodes. The blue text is the "bias" (intercept for the perceptron linear function).
+
+```{r neuralnet-pkg-demo-plot}
+```
+
+### autoencoder NN
+
+```{r, echo = FALSE}
+knitr::read_chunk("../package-demos/autoencoder.R")
+```
+
+An autoencoder neural network is an unsupervised learning algorithm that applies backpropagation to adjust its weights, attempting to learn to make its target values (outputs) to be equal to its inputs.
+In other words, it is trying to learn an approximation to the identity function, so as its output is similar to its input, for all training examples.
+With the sparsity constraint enforced (requiring that the average, over training set, activation of hidden units be small), such autoencoder automatically learns useful features of the unlabeled training data, which can be used for, e.g., data compression (with losses), or as features in deep belief networks.
+
+The training is performed by optimizing the autoencoder's cost function $J(W,b)$ that depends on the autoencoder's weights $W$ and biases $b$.
+The optimization (searching for a local minimum) is performed with the `optim` function using one of the three methods: `BFGS`, `L-BFGS-B`, or `CG` (see details in `help(optim)`).
+
+After the optimization converges, the mean squared error between the output and input matrix (either the training matrix, or a test matrix) is evaluated as a measure of goodness of fit of the autoencoder.
+
+see package `autoencoder`
+
+[cran](https://CRAN.R-project.org/package=autoencoder)
+
+[wiki](https://en.wikipedia.org/wiki/Autoencoder)
+
+it exports 3 functions
+
+- `autoencoder::visualize.hidden.units`
+- `autoencoder::autoencode`
+- `autoencoder::predict.autoencoder`
+
+Train the autoencoder on unlabeled set of 5000 image patches of
+size `Nx.patch` by `Ny.patch`, randomly cropped from 10 nature photos:
+Load a training matrix with rows corresponding to training examples,
+and columns corresponding to input channels (e.g., pixels in images):
+
+```{r autoencoder-pkg-training-matrix-data, eval = FALSE, echo = FALSE}
+```
+
+Set up the autoencoder architecture:
+
+```{r autoencoder-pkg-example-setup, eval = FALSE}
+```
+
+Train the autoencoder on training.matrix using BFGS optimization method
+(see help('optim') for details):
+
+
+```{r autoencoder-pkg-example-run, eval = FALSE }
+```
+
+N.B.: Training this autoencoder takes a long time, so in this example we do not run the above
+`autoencode` function, but instead load the corresponding pre-trained `autoencoder.object`.
+
+
+Report mean squared error for training and test sets:
+
+```{r autoencoder-pkg-example-report-MSE, eval = FALSE}
+```
+
+Extract weights W and biases b from autoencoder.object:
+
+```{r autoencoder-pkg-example-extract-weights-biases, eval = FALSE}
+```
+
+Visualize hidden units' learned features:
+
+```{r autoencoder-pkg-example-visualize-hidden-units, eval = FALSE}
+```

@@ -1,0 +1,96 @@
+## testthat
+
+### Overview
+
+Section for all things hadley's testing package `testthat`.
+
+### tests
+
+No news is good news. successful test silently return the first argument.
+
+- `expect_identical` tests with `identical`
+- `expect_equal` tests with `all.equal`
+- `expect_equivalent` tests with `all.equal` and `check.attributes = FALSE`
+- with multiple assertions in the same `it`-block, all assertions are tested and any false assertion gets reported
+
+```{r "testthat tests"}
+# library(testthat)
+
+# testing equality
+a <- 10
+testthat::expect_equal(a, 10)
+testthat::expect_equal(10L, 10)
+# Use expect_equal() when testing for numeric equality
+testthat::expect_equal(sqrt(2) ^ 2, 2)
+
+# testing logical return
+testthat::expect_true(2 == 2)
+testthat::expect_false(2 != 2)
+
+# greater/less than tests
+a <- 9
+testthat::expect_lt(a, 10)
+testthat::expect_lte(a, 9)
+testthat::expect_gt(a, 8)
+testthat::expect_gte(a, 9)
+
+# regex match test
+testthat::expect_match("Testing is fun", "f.n")
+
+# type and class tests
+testthat::expect_null(NULL)
+testthat::expect_type(1, "double") # type test
+testthat::expect_is(1, "numeric")  # class test
+
+testthat::expect_length(1:10, 10)
+
+# output expectations
+testthat::expect_output(str(mtcars), "32 obs")
+testthat::expect_output(str(mtcars), "11 variables")
+testthat::expect_output(str(mtcars), "11 VARIABLES", ignore.case = TRUE) # extra arguments are sent to grepl
+# -- Messages
+f <- function(x) {
+  if (x < 0) message("*x* is already negative")
+  -x
+}
+testthat::expect_message(f(-1))
+testthat::expect_message(f(-1), "already negative")
+testthat::expect_message(f(1), NA)
+# -- Warnings
+f <- function(x) {
+  if (x < 0) warning("*x* is already negative")
+  -x
+}
+testthat::expect_warning(f(-1))
+testthat::expect_warning(f(-1), "already negative")
+testthat::expect_warning(f(1), NA)
+## -- Errors
+f <- function() stop("My error!")
+testthat::expect_error(f())
+testthat::expect_error(f(), "My error!")
+## -- Silence
+# doesn't check silent/invisible return, but rather if there's messages/warnings/errors being output
+testthat::expect_silent("123")
+
+# failure expectation
+testthat::expect_failure(testthat::expect_identical(1, 1L))
+```
+
+### stubs
+
+implemented with `testthat::with_mock`
+
+```{r "with_mock; NOTE: Can't mock functions in base packages anymore", eval = FALSE}
+testthat::with_mock(
+   all.equal = function(x, y, ...) TRUE
+  ,testthat::expect_equal(2 * 3, 4) # silently returns the return of the first argument
+  ,.env = "base"
+) # return the output of the last expression
+
+testthat::with_mock(
+   `base::identical` = function(x, y, ...) TRUE
+  ,testthat::expect_identical(3, 5)
+  ,testthat::expect_identical(TRUE, 6)
+)
+```
+

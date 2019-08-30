@@ -1,0 +1,57 @@
+## devtools
+
+### Overview
+
+Section for devtools basics and qwirks. Use it for creating packages, downloading them etc.
+
+### install.github
+
+install packages from github
+
+```{r "devtools::install_github", eval = FALSE}
+devtools::install_github("cran/purrr")
+devtools::install_github("hadley/stringr")
+devtools::install_github("rstudio/rmarkdown")
+devtools::install_github("rstudio/rmarkdown", ref = '00b58f6') # v1.5
+devtools::install_github(c("cran/cli", "cran/utf8", "cran/pillar", "cran/tibble"))
+devtools::install_github("rstudio/rmarkdown", ref = '79a741b') # v1.1
+```
+
+### create
+
+generates a R-package template
+
+```{r "devtools::create", eval = FALSE}
+devtools::create("path/to/package/pkgname")
+devtools::create("~/code/R/packages/niftytools")
+```
+
+### add imports
+
+adds `magrittr` dependency to import field to DESCRIPTION file in a package
+
+```{r "devtools::use_package", eval = FALSE}
+devtools::use_package("magrittr")
+```
+
+### document
+
+writes roxygen2 documentation, writing NAMESPACE and .Rd (documentation) files.
+
+```{r "devtools::document", eval = FALSE}
+devtools::load_all()
+devtools::document()
+```
+
+### load package contents
+
+Use `devtools::load_all()` function to load the package during development.
+
+### using testthat
+
+Run `devtools::use_testthat()` to set-up testing during package development.
+
+### run tests
+
+Run `devtools::test()` to run the package tests.
+

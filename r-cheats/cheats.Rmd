@@ -1,0 +1,210 @@
+
+## Overview
+
+Section for "tricks".
+
+## saving files
+
+`save` saves the R-object(s) to disc and keeps the naming
+
+```{r, eval = FALSE}
+save(foo,file="data.Rda")
+load("data.Rda")
+```
+
+`saveRDS` saves one object and does not keep the name for the object.
+
+```{r, eval = FALSE}
+saveRDS(foo, file="data.Rda") # even for S4 objects
+bar <- readRDS(file="data.Rda")
+```
+
+```{r, eval = FALSE}
+write
+write.table
+write.csv
+```
+
+```{r, eval = FALSE}
+library(MASS)
+mat <- matrix(1:100,nrow=20)
+write.matrix(mat,'file.prn',sep = "\t")
+
+mat2 <- as.matrix(read.table("file.prn", as.is = TRUE))
+mat2 <- unname(mat2) # make mat2 a true matrix by removing the names
+all.equal(mat, mat2) # [1] TRUE
+```
+
+```{r, eval = FALSE}
+dput; dget # not for S4 objects
+```
+
+```{r, eval = FALSE}
+dump; source # not for S4 objects
+```
+
+## remove names
+
+```{r}
+require(magrittr)
+dt <- data.frame(V1 = runif(100) %>% round,
+                 V2 = runif(100) %>% round)
+(crossMatrix <-
+  ( with(dt, table(V1,V2))
+    %>% as.data.frame(row.names = LETTERS[1:4])
+    %>% as.matrix
+    )
+  )
+crossMatrix %>% unname
+```
+
+or NULLify either row or column names
+
+```{r}
+
+colnames(crossMatrix) <- NULL
+crossMatrix
+rownames(crossMatrix) <- NULL
+crossMatrix
+
+```
+
+## remove named columns
+
+```{r message=FALSE}
+require(magrittr)
+```
+
+```{r}
+df <- data.frame(x=1:5, y=2:6, z=3:7, u=4:8)
+df
+df %>% subset(select=-c(z,u))
+df[ , -which(names(df) %in% c("z","u"))] # also works but not as nice IMO
+```
+
+## insertion in characters
+
+or strings. how to find something similar to the use case of Ruby's `insert`
+
+```{r "character insertion"}
+"shjat" %>% gsub('^([a-z]{2})([a-z]+)$',"\\1_\\2",.)
+
+insert <- function(obj, ...) UseMethod("insert")
+insert.character <- function(chr, position, insertion){ # only works with \w characters
+  chr %>%
+    gsub( paste0("^(\\w{", position - 1, "})(\\w+)$")
+         ,paste0("\\1", insertion, "\\2")
+         ,.)
+}
+"shjat" %>% insert(3, "_")
+```
+
+## time-series convertions
+
+Dependency installation
+
+```{r, eval = FALSE}
+
+dependencies <- c("zoo", "xts")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
+```
+
+
+```{r}
+
+library(xts)
+price <- structure(list(
+  date = c(20070103L, 20070104L, 20070105L, 20070108L, 20070109L,
+           20070110L, 20070111L, 20070112L, 20070115L),
+  close = c(54.7, 54.77, 55.12, 54.87, 54.86, 54.27, 54.77, 55.36, 55.76)),
+  .Names = c("date", "close"), class = "data.frame",
+  row.names = c("1", "2", "3", "4", "5", "6", "7", "8", "9"))
+price$date %<>% as.character %>% as.Date(format="%Y%m%d")
+xts(price$close, price$date)
+
+```
+
+```{r}
+
+library(zoo)
+pricez <- read.zoo(text="   DATE  CLOSE
+ 1    20070103 54.700
+ 2    20070104 54.770
+ 3    20070105 55.120
+ 4    20070108 54.870
+ 5    20070109 54.860
+ 6    20070110 54.270
+ 7    20070111 54.770
+ 8    20070112 55.360
+ 9    20070115 55.760
+ ")
+index(pricez) <- as.Date(as.character(index(pricez)), format="%Y%m%d")
+pricez
+
+```
+
+`ts` (time-series) object to `data.frame`
+
+```{r}
+library(zoo)
+UKgas %>%
+  { data.frame(date = as.Date(as.yearqtr(time(.))),
+               gas = as.matrix(.)) }
+```
+
+## Tables
+
+```{r, eval=FALSE, echo=FALSE}
+
+dependencies <- c("gtools", "gdata", "gmodels")
+devtools::install_github(paste("cran", dependencies, sep = "/"))
+
+```
+
+```{r}
+
+library(gmodels)
+data(infert, package = "datasets")
+
+CrossTable(warpbreaks$wool,
+           warpbreaks$tension,
+           chisq = TRUE,
+           prop.t = TRUE,
+           digits = 2,
+           dnn = c("Wool", "Tension"))
+
+CrossTable(infert$education, infert$induced, expected = TRUE)
+CrossTable(infert$education, infert$induced, expected = TRUE, format="SAS")
+CrossTable(infert$education, infert$induced, expected = TRUE, format="SPSS")
+```
+
+## cumulatively sum within a group
+
+Cumulativily sum the `carb` column within each `am`-group
+
+```{r}
+library(magrittr)
+library(dplyr)
+( mtcars
+  %>% filter(cyl == "6")
+  %>% select(carb, gear, am)
+  %>% group_by(am)
+  %>% arrange(am)
+  %T>% print
+  %>% do(cumsum(.["carb"]))
+  )
+```
+
+## list to data.frame
+
+given a list of data frames. use `Reduce` to bind them togetherq
+
+```{r}
+library(magrittr)
+library(dplyr)
+c(3, 6, 12) %>%
+  lapply(function(day){ airquality %>% filter(Day == day) }) %>%
+  Reduce(rbind, .)
+```
+

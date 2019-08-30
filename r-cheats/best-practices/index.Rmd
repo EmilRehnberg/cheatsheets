@@ -1,0 +1,136 @@
+
+## Overview
+
+Section for listing best programming practices in R.
+
+## Styling
+
+### pretty code
+
+according to tidyverse standard. Use [styler](http://styler.r-lib.org/) package
+
+### colorize code in terminal
+
+```{r prettycode-pkg-prettycode-function}
+```
+
+## R-settings
+
+`.Rprofile` is used as settings file.
+
+### package availability in interactive sessions
+
+Run the following `usethis` functions for adding snippets to `.Rprofile`
+
+1. `usethis::use_devtools()`: makes devtools available in interactive sessions.
+2. `usethis::use_usethis()`: makes usethis available in interactive sessions.
+3. `usethis::use_reprex()`: makes reprex available in interactive sessions.
+4. `usethis::use_conflicted()`: makes conflicted available in interactive sessions.
+5. `usethis::use_partial_warning()`: warns on partial matches.
+
+## Package Development
+
+### Publishing
+
+for easy package websites use [pkgdown](https://pkgdown.r-lib.org/articles/pkgdown.html)
+
+### Development
+
+check out [usethis](https://github.com/r-lib/usethis) package
+
+### Use tidyverse conventions
+
+read the usethis help on [tidyverse development](https://usethis.r-lib.org/reference/tidyverse.html)
+
+## File System handling
+
+`fs` [package](https://fs.r-lib.org/) is designed to handle these issues
+
+```{r fs-pkg-quick-demo}
+```
+
+## Namespace Conflicts
+
+Check out `conflicted` [package](https://conflicted.r-lib.org) to handle namespace conflicts
+
+## Factors (Categorical) Data Handling
+
+the `forcats` [package](https://forcats.tidyverse.org/) is developed for handling `factors`, R's categorical data.
+Also check out the Factors section \@ref(factors)
+
+```{r forcats-pkg-quick-demo}
+```
+
+```{r forcats-pkg-cross-demo}
+```
+
+```{r forcats-pkg-lump-min-demo}
+```
+
+```{r forcats-pkg-matching-demo}
+```
+
+```{r forcats-pkg-as_factor-demo}
+```
+
+```{r forcats-pkg-relevel-demo}
+```
+
+## Working with data bases
+
+the `dbplyr` [package](https://dbplyr.tidyverse.org/) is designed for this
+
+```{r dbplyr-pkg-quick-demo}
+```
+
+
+## function checks
+
+Given
+
+```{r}
+wt_mean <- function(x, w) sum(x * w) / sum(x)
+wt_mean(1:6, 1:3)
+```
+
+there's gotchas with R's vector recycling rules. Use checks
+
+```{r}
+wt_mean <- function(x, w) {
+  if (length(x) != length(w)) {
+    stop("`x` and `w` must be the same length", call. = FALSE)
+  }
+  sum(w * x) / sum(x)
+}
+```
+
+`x` and `w` must be the same length
+
+```{r, eval = FALSE}
+wt_mean(1:6, 1:3) # > Error: `x` and `w` must be the same length
+```
+
+you can use `stopifnot` function to do multiple checks and get informative messages back
+
+```{r}
+wt_mean <- function(x, w, na.rm = FALSE) {
+  stopifnot(is.logical(na.rm), length(na.rm) == 1)
+  stopifnot(length(x) == length(w))
+
+  if (na.rm) {
+    miss <- is.na(x) | is.na(w)
+    x <- x[!miss]
+    w <- w[!miss]
+  }
+  sum(w * x) / sum(x)
+}
+```
+
+`is.logical(na.rm)` is not TRUE
+
+```{r, eval = FALSE}
+wt_mean(1:6, 6:1, na.rm = "foo") #> Error: is.logical(na.rm) is not TRUE
+```
+
+Note that when using `stopifnot` you assert what should be true rather than checking for what might be wrong.
+
