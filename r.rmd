@@ -27,12 +27,6 @@ rmarkdown::render(rmdFilePath, output_format="html_document") # "all_document"
 
 # TODO
 # - try out Bundler for R -- https://github.com/robertzk/lockbox
-
-# From Chase code:
-# - dealing with Reduce and row.names (use row.names = NULL in data.frame)
-# - use factors to get all the counts you want in a table
-# - workflow with categories of words to category counts
-#   - using reverse naming etc to create the word-category lookup table
 ```
 
 ```{r, eval=FALSE, echo = FALSE}
@@ -320,8 +314,84 @@ jsonlite::fromJSON('[{"Type": "Quebec", "Treatment": "nonchilled", "conc": 350}]
 ### Overview
 
 R has a S3 and S4 Object system. S3 is preferred using polymorphism.
+Ref: [adv-R](http://adv-r.had.co.nz/OO-essentials.html)
 
-### UseMethod
+### Base types
+
+R "base types" are like a C struct, has 1) object contents and 2) a type. This is not an object system as you can't add objects to it.
+
+```{r}
+
+f <- function() NULL
+typeof(f) # [1] "closure"
+is.function(f)
+
+typeof(sum) # [1] "builtin" # for primitive functions
+is.primitive(sum)
+
+```
+
+use `pryr::otype` to understand what kind of system an object follows
+
+```{r}
+
+pryr::otype(character()) # [1] "base"
+pryr::otype(integer()) # [1] "base"
+pryr::otype(numeric()) # [1] "base"
+
+pryr::otype(matrix()) # [1] "base"
+pryr::otype(list()) # [1] "base"
+pryr::otype(c()) # [1] "base"
+
+pryr::otype(factor()) # [1] "S3"
+pryr::otype(ts()) # [1] "S3"
+pryr::otype(data.frame()) # [1] "S3"
+as.Date("1999-01-01") %>% pryr::otype() # [1] "S3"
+
+df <- data.frame(x = 1:5, y = LETTERS[1:5])
+pryr::otype(df)
+pryr::otype(df$x)
+pryr::otype(df$y) # factors are S3
+
+pryr::otype(mean)
+
+```
+
+use `pryr::ftype`
+
+```{r}
+
+pryr::ftype(`%in%`)
+pryr::ftype(sum)
+pryr::ftype(t.data.frame)
+pryr::ftype(t.test) # Tricky!
+pryr::ftype(writeLines)
+pryr::ftype(unlist)
+
+pryr::ftype(mean)
+methods(mean)
+pryr::ftype(mean.Date)
+
+```
+
+
+### S3
+
+#### methods
+
+- query all methods for a S3 generic function
+- query all methods S3 function available for a class
+
+```{r, ""}
+
+pryr::ftype(mean)
+methods(mean)
+methods(class = "Date")
+
+```
+
+
+#### generic function "UseMethod"
 
 TODO: add example where you pass more arguments
 
@@ -333,10 +403,27 @@ asEmpty <- function(object) UseMethod("asEmpty")
 asEmpty.integer <- function(object) integer(0)
 asEmpty.character <- function(object) character(0)
 
+methods(asEmpty)
+
 1:3 %>% asEmpty
 letters %>% asEmpty
 
 ```
+
+#### constructor function
+
+example. think the factor and `data.frame` functions
+
+```{r}
+
+foo <- function(x) {
+  if (!is.numeric(x)) stop("X must be numeric")
+  structure(list(x), class = "foo")
+  }
+
+```
+
+#### Use-case
 
 adding custom classes to objects and using polymorphism
 
@@ -346,16 +433,15 @@ mkNameFeatures <- function(obj) UseMethod("mkNameFeatures")
 mkNameFeatures.se <- function(names) data.frame(name = names, namesCount = names %>% strsplit(" ") %>% purrr::map_dbl(length))
 mkNameFeatures.ja <- function(names) data.frame(name = names, hasSpace = names %>% grepl(pattern = " ") )
 
-appendClass <- function(obj, cls) {
-  class(obj) %<>% append(cls)
-  obj
-}
+initClass <- function(obj, cls) obj %>% structure(class = cls %>% append(class(obj)) %>% unique)
 
-jaNames <- c("田中角栄", "杉本 レイ", "上杉謙信") %>% appendClass("ja")
-seNames <- c("Emil Erik Alexis Rehnberg", "stella", "balle AF raggare") %>% appendClass("se")
+jaNames <- c("田中角栄", "杉本 レイ", "上杉謙信") %>% initClass("ja")
+seNames <- c("Emil Erik Alexis Rehnberg", "stella", "balle AF raggare") %>% initClass("se")
 
 jaNames %>% mkNameFeatures
 seNames %>% mkNameFeatures
+
+jaNames %>% mkNameFeatures %>% initClass("ja")
 
 ```
 
@@ -363,11 +449,11 @@ seNames %>% mkNameFeatures
 
 # Standard Libraries {.tabset .tabset-fade .tabset-pills}
 
-### Overview
+## Overview
 
 Looking at functions from e.g. `base` and `stats` packages that are loaded by default R.
 
-### Allocation
+## Allocation
 
 as in allocation of empty objects / place holders
 
@@ -378,7 +464,7 @@ vector("character", 8)
 vector("logical", 3)
 ```
 
-### File Manipulation
+## File Manipulation
 
 Working with files. Checking existance, copy `cp`, removing `rm`, appending etc.
 
@@ -405,7 +491,7 @@ file.remove(filePath1, filePath2, filePath3)
 file.remove(tmpDir) # works on EMPTY directories
 ```
 
-### Extract
+## Extract
 
 aka `[`. Use `drop` to keep the matrix.
 
@@ -415,7 +501,7 @@ m[1, ] # first row of m (atomic vector)
 m[1, , drop = FALSE] # first row of m still as matrix
 ```
 
-### replications
+## replications
 
 replicate elements of vectors and lists
 
@@ -436,7 +522,7 @@ rep(x, len = 10)
 rep_len(x, length.out = 10) # no names
 ```
 
-### iterate over data frame variables
+## iterate over data frame variables
 
 use `base::seq_along` in a for loop to iterate over a data frame's variables / columns
 
@@ -454,7 +540,7 @@ be aware that the same thing (minus the row names) can be acheived much more nic
 USArrests %>% dplyr::select(-state) %>% sapply(scale) %>% as.data.frame %>% head
 ```
 
-### reduce function
+## reduce function
 
 `base::Reduce`
 
@@ -474,7 +560,7 @@ c(3, 7, 15, 1, 292) %>%
   Reduce(f = function(incr, acc) incr + 1 / acc, right = TRUE)
 ```
 
-### pattern matching
+## pattern matching
 
 `base::switch`
 
@@ -493,7 +579,7 @@ centre(x, "median")
 centre(x, "trimmed")
 ```
 
-### split df to list
+## split df to list
 
 e.g. split a `data.frame`, rows / observations to list. NOTE: second argument is a "group" e.g. `1:10`. If you in this case have a data frame with ten rows, each row will be in an entry in the returned list.
 
@@ -510,7 +596,7 @@ or by some other grouping
 split(airquality, airquality$Month)
 ```
 
-### work inside closed data environment
+## work inside closed data environment
 
 `base::with` and `base::within`
 
@@ -527,7 +613,7 @@ aq <- within(airquality, {     # Notice that multiple vars can be changed
 head(aq)
 ```
 
-### system information
+## system information
 
 invoke system calls / command line. check system info and library / package info.
 
@@ -557,7 +643,7 @@ R.home()
 Sys.getenv("R_HOME")
 ```
 
-### Citation
+## Citation
 
 ```{r message=FALSE}
 require(magrittr)
@@ -568,7 +654,7 @@ citation() %>% toBibtex # defaults to R-documentation
 citation("magrittr") %>% toBibtex
 ```
 
-### package version
+## package version
 
 check the version of an available package
 
@@ -576,7 +662,7 @@ check the version of an available package
 packageVersion("magrittr")
 ```
 
-### set reference level
+## set reference level
 
 `stats:relevel`
 
@@ -588,7 +674,7 @@ warpbreaks$tension <- relevel(warpbreaks$tension, ref = "M")
 warpbreaks %>% str
 ```
 
-### scientific notation
+## scientific notation
 
 print in scientific notation
 
@@ -601,7 +687,7 @@ library(magrittr)
 
 you can also tinker with the `options(scipen=)` option
 
-### print declared variable
+## print declared variable
 
 use parentheses to return / print result during variable declaration
 
@@ -610,7 +696,7 @@ use parentheses to return / print result during variable declaration
 a
 ```
 
-### dicotomize
+## dicotomize
 
 discretize continuous variable. (turn continuous variable discrete)
 
@@ -628,7 +714,7 @@ cut(U,
     include.lowest = TRUE)
 ```
 
-### matching
+## matching
 
 `match` et. al match on the first character forward.
 
@@ -712,7 +798,7 @@ matching on start of string by using caret `^` at the start of the pattern
 strs %>% grep(pattern = "^(FY\\d{2}).(\\d{2})$", value = TRUE)
 ```
 
-### padding
+## padding
 
 padding with zeros
 
@@ -751,7 +837,7 @@ sprintf("%02s", c("10", "8", "12")) # doesn't return what you'd expect on window
 
 ```
 
-### substr
+## substr
 
 can extract characters based on position
 
@@ -764,7 +850,7 @@ Can be working similar to T-SQL's `LEFT`-function. No need to use regex
 
 Can also be thought of as deleting parts of strings / characters.
 
-### numerical characteristics of the machine
+## numerical characteristics of the machine
 
 `.Machine` has a lot of numerical characteristics
 
@@ -775,7 +861,7 @@ e.g. the rounding error
 .Machine
 ```
 
-### setting names for arrays
+## setting names for arrays
 
 use `stats::setNames`
 
@@ -793,7 +879,7 @@ structure( 1:3, names = c("foo", "bar", "baz") )
 # structure( 1:3, c("foo", "bar", "baz") ) # Error in structure(1:3, c("foo", "bar", "baz")) : attributes must be named
 ```
 
-### scale
+## scale
 
 for normalizing / standardizing variables in `data.frame`
 
@@ -1869,7 +1955,7 @@ testthat::expect_failure(testthat::expect_identical(1, 1L))
 
 implemented with `testthat::with_mock`
 
-```{r "with_mock"}
+```{r "with_mock; NOTE: Can't mock functions in base packages anymore", eval = FALSE}
 testthat::with_mock(
    all.equal = function(x, y, ...) TRUE
   ,testthat::expect_equal(2 * 3, 4) # silently returns the return of the first argument
@@ -1895,28 +1981,56 @@ evaluating variable names and values. This is for dplyr 6.0+
 
 ```{r "dplyr programming"}
 
-# dplyr filter is a little bit qwirkier
 dta <- data.frame(
    v1 = sample(5,10, replace = TRUE)
   ,v2 = sample(5,10, replace = TRUE)
 )
 
-# Note the parentheses around the quo eval, it's required in this situation
+```
+
+dplyr filter is a little bit qwirkier.
+
+Note the parentheses around the quo eval, it's required in this situation.
+
+```{r}
+
 myVar <- rlang::quo(v1)
 dta %>% dplyr::filter((!!myVar) == 1)
-# while not required in this situation
+
+```
+
+while not required in this situation
+
+```{r}
+
 myVal <- 1
 dta %>% dplyr::filter(v1 == !!myVal)
 
-# not that col is a string / character
+```
+
+not that col is a string / character
+
+```{r}
+
 which_col <- "v1"
 which_val <- 1
 
 dta %>% dplyr::filter((!!rlang::sym(which_col))==which_val)
-#OR
+
+```
+
+OR
+
+```{r}
+
 dta %>% dplyr::filter(UQ(rlang::sym(which_col))==which_val)
 
-# old syntax still works
+```
+
+old syntax still works
+
+```{r}
+
 dta %>% dplyr::filter_(.dots= paste0(which_col, "== ", which_val))
 
 ```
@@ -2014,15 +2128,17 @@ Overview for the `pwr` package, package for calculating statistical power.
 
 Chi-square test power calculations.
 
-```{r "chi-square test power"}
-# pwr::pwr.chisq.test(
-#   w = NULL,  # Effect size - 0.1, 0.3, and 0.5 represent small, medium, and large effect sizes respectively
-#   N = NULL,  # Sample size
-#   df = NULL, # degrees of freedom
-#   sig.level = 0.05,
-#  power = NULL
-#   )
+```{r "chi-square test power", eval = FALSE}
+pwr::pwr.chisq.test(
+  w = NULL,  # Effect size - 0.1, 0.3, and 0.5 represent small, medium, and large effect sizes respectively
+  N = NULL,  # Sample size
+  df = NULL, # degrees of freedom
+  sig.level = 0.05,
+ power = NULL
+  )
+```
 
+```{r "chi-square test power cont."}
 pwr::pwr.chisq.test(w = .5, N = 145, df = 1)
 ```
 
@@ -2037,19 +2153,29 @@ Overview for the `rlang` package. `quo` function is also imported by `dplyr`.
 ```{r "dplyr and quo"}
 rlang::quo(paste(letters[1:3], collapse = "+")) # doesn't work
 rlang::quo(!!paste(letters[1:3], collapse = "+"))
+```
 
-# paste(letters[1:3], collapse = "+") %>% quo(!!.) # no magrittr piping
+no magrittr piping
 
-# sending
+```{r, eval = FALSE}
+paste(letters[1:3], collapse = "+") %>% quo(!!.)
+```
+
+sending
+
+```{r}
 sortArg <- rlang::quo(cyl)
 mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!sortArg)
 
 sortArg <- rlang::quo(cyl %>% (dplyr::desc))
 mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!sortArg)
+```
 
-# doesn't work
-# sortArg <- "cyl %>% (dplyr::desc)"
-# mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!rlang::quo(sortArg))
+doesn't work
+
+```{r, eval = FALSE}
+sortArg <- "cyl %>% (dplyr::desc)"
+mtcars %>% dplyr::select(mpg, cyl, disp) %>% dplyr::arrange(!!rlang::quo(sortArg))
 ```
 
 ## RSQLServer {.tabset .tabset-fade .tabset-pills}
@@ -2068,13 +2194,19 @@ oboedbConnect <- function() {
                  ,file = "~/sql.yml" # file for sql settings and credentials
                  )
 }
+```
 
-# SELECTS and grab data
+SELECTS and grab data
+
+```{r, eval = FALSE}
 n <- 5L
 statusQuery <- dbplyr::build_sql("SELECT TOP ", n, " * FROM [Oboe].[dbo].[BookingStatus_lkp]")
 DBI::dbGetQuery(oboedbConnect(), statusQuery)
+```
 
-# complex SELECTS
+complex SELECTS
+
+```{r, eval = FALSE}
 complicatedSelectQuery <- "
 DECLARE @nstat INTEGER = (SELECT 7);
 
@@ -2082,9 +2214,11 @@ SELECT TOP (@nstat) *
 FROM [Oboe].[dbo].[BookingStatus_lkp]
 "
 DBI::dbGetQuery(oboedbConnect(), complicatedSelectQuery)
+```
 
-# NOT run:
-# INSERTs with `dbExecute`
+INSERTs with `dbExecute`
+
+```{r, eval = FALSE}
 DBO::dbExecute(oboedbConnect(), "INSERT INTO cars (speed, dist) VALUES (1, 1), (2, 2), (3, 3);")
 ```
 
@@ -2127,20 +2261,28 @@ use instead of `data.frame` since it's more performant and less qwirky
 ```{r "tibble"}
 library(tibble)
 
-# similar to data.frame
 a <- 1:5
-tibble(a, b = a * 2)
+tibble(a, b = a * 2) # similar to data.frame
 
 lst(n = 5, x = runif(n))
+```
 
-# tibble never coerces its inputs
+`tibble` never coerces its inputs
+
+```{r}
 str(tibble(letters))
 str(tibble(x = list(diag(1), diag(2))))
+```
 
-# or munges column names
+or munges column names
+
+```{r}
 tibble(`a + b` = 1:5)
+```
 
-# With the SE version, you give it a list of formulas/expressions
+With the SE version, you give it a list of formulas/expressions
+
+```{r}
 tibble_(list( x = ~1:10
              ,y = quote(x * 2)))
 ```
@@ -2201,6 +2343,31 @@ to add names use pipe `set_names` after
 sums %>% map("call") %>% purrr::set_names(paste0("CylinderCnt_", c(4,6,8)))
 ```
 
+`.id` argument is available for `purrr::map_df`
+
+```{r ".id argument only works with map_df"}
+
+purrr::rerun(5, rnorm(100)) %>%
+  set_names(paste0("sim", 1:5)) %>%
+  purrr::map_df(~ dplyr::data_frame(value = .x, step = 1:100), .id = "simulation")
+
+```
+
+### imap - map with index / names
+
+iterate with names for `map`, `walk` etc.
+`imap(lst, .f)` is short for `map(lst, names(list), .f)`
+
+```{r}
+
+c(mohammad = "^moh$|^muhamed$|^mohamed$",ahmad = "^ahmed$|^ahmat$") %>% purrr::imap(~ paste0("regex from ", .y, ": ", .x))
+
+c(mohammad = "^moh$|^muhamed$|^mohamed$",ahmad = "^ahmed$|^ahmat$") %>% purrr::imap_chr(~ paste0("regex from ", .y, ": ", .x))
+
+```
+
+
+
 ### partial
 
 Curry a function. i.e. prefill arguments for a function. by default the prefilled arguments are evaluated lazily.
@@ -2208,7 +2375,11 @@ Curry a function. i.e. prefill arguments for a function. by default the prefille
 ```{r "purrr::partial"}
 compact1 <- function(x) discard(x, is.null)
 compact2 <- partial(discard, .p = is.null)
-# and the generated source code is very similar to what we made by hand
+```
+
+and the generated source code is very similar to what we made by hand
+
+```{r}
 compact1
 compact2
 
@@ -2216,7 +2387,11 @@ f <- partial(runif, n = rpois(1, 5))
 f
 f()
 f()
-# You can override this by saying .lazy = FALSE
+```
+
+You can override this by saying .lazy = FALSE
+
+```{r}
 f <- partial(runif, n = rpois(1, 5), .lazy = FALSE)
 f
 f()
@@ -2304,24 +2479,48 @@ probably `update_list` is preferred though due to the edge-case shown below
 
 ```{r}
 library(purrr)
-# want to an arg3 to inputs
-inputs <- list(arg1 = "a", arg2 = "b")
+```
 
-# below is not sufficient
+want to an arg3 to inputs
+
+```{r}
+inputs <- list(arg1 = "a", arg2 = "b")
+```
+
+below is not sufficient
+
+```{r}
 list(inputs, arg3 = c("c1", "c2")) %>% str()
 c(inputs, arg3 = c("c1", "c2")) %>% str()
+```
 
-# use splice
-# splice() concatenates the elements of inputs with arg3
+use `splice`. `splice()` concatenates the elements of inputs with arg3
+
+```{r}
 splice(inputs, arg3 = c("c1", "c2")) %>% str()
-# edge-case when two elements get named the same
-splice(inputs, arg2 = c("c1", "c2")) %>% str()
-# use update_list instead
-update_list(inputs, arg2 = c("c1", "c2")) %>% str()
+```
 
-# you can append but it's clunky
+edge-case when two elements get named the same
+
+```{r}
+splice(inputs, arg2 = c("c1", "c2")) %>% str()
+```
+
+use update_list instead
+
+```{r}
+update_list(inputs, arg2 = c("c1", "c2")) %>% str()
+```
+
+you can append but it's clunky
+
+```{r}
 append(inputs, list(arg3 = c("c1", "c2")))
-# or worse with a complete statement, mutating inputs
+```
+
+or worse with a complete statement, mutating inputs
+
+```{r}
 inputs[["arg3"]] <- c("c1", "c2")
 inputs
 ```
@@ -2374,46 +2573,73 @@ modification of a list. similar to `splice` but can overwrite elements with same
 
 inputs <- list(arg1 = "a", arg2 = "b")
 purrr::update_list(inputs, arg2 = c("c1", "c2")) %>% str()
-# instead of using splice
+
+```
+
+instead of using splice
+
+```{r}
 splice(inputs, arg2 = c("c1", "c2")) %>% str()
 
 purrr::update_list(inputs, arg3 = c("c1", "c2")) %>% str()
 
 SpecialArguments <- list(arg1 = c("c1", "c2"))
-# make it a deeper list
+```
+
+make it a deeper list
+
+```{r}
 purrr::update_list(inputs, SpecialArguments = SpecialArguments) %>% str
-# update list contents with overwrites using splicing !!! or UQS()
+```
+
+update list contents with overwrites using splicing !!! or `UQS()`
+
+```{r}
 purrr::update_list(inputs, !!! SpecialArguments) %>% str
+```
 
-# if you add a list to list though use good old append
+if you add a list to list though use good old append
+
+```{r}
 spArgList <- list(specialArgs = c("c2", "c3"))
-# below broke
-# inputs %>% purrr::update_list(spArgList) # will spit out inputs
-inputs %>% append(spArgList)
+```
 
+below broke
+
+```{r, eval = FALSE}
+inputs %>% purrr::update_list(spArgList) # will spit out inputs
+```
+
+```{r}
+inputs %>% append(spArgList)
 ```
 
 ### when
 
-pattern match with conditions using `when`
+pattern match with conditions using `when`. Matching the 2nd condition.
 
 ```{r "purrr::when"}
-# matching the 2nd condition
 1:10 %>%
   when( sum(.) <=  50 ~ sum(.)
        ,sum(.) <= 100 ~ sum(.)/2
        ,~ 0
        )
+```
 
-# matching both the first and 2nd conditions > first condition wins!
+matching both the first and 2nd conditions > first condition wins!
+
+```{r}
 1:10 %>%
   when( sum(.) <=   x ~ sum(.)
        ,sum(.) <= 2*x ~ sum(.)/2
        ,~ 0
        ,x = 60
        )
+```
 
-# doesn't match the condition so run default
+doesn't match the condition so run default
+
+```{r}
 iris %>%
   subset(Sepal.Length > 10) %>%
   when( nrow(.) > 0 ~ .
@@ -2430,15 +2656,26 @@ library(purrr)
 mu  <- list(5, 10, -3)
 sgm <- list(1, 5, 10)
 n   <- list(1, 3, 5)
-# with two arguments, you can use `map2`
-map2(mu, sgm, rnorm, n = 5) %>% str()
+```
 
-# for more arguments, use a list and `pmap`
-# no names means order is significant!!
+with two arguments, you can use `map2`
+
+```{r}
+map2(mu, sgm, rnorm, n = 5) %>% str()
+```
+
+for more arguments, use a list and `pmap`.
+
+no names means order is significant!!
+
+```{r}
 argsList <- list(n, mu, sgm)
 argsList %>% pmap(rnorm)
+```
 
-# use a named list for more comprehensable code
+use a named list for more comprehensable code
+
+```{r}
 argsList <- list(mean = mu, sd = sgm, n = n)
 argsList %>% pmap(rnorm)
 
@@ -2496,27 +2733,38 @@ usually called `filter`/`select`/`find_all` and `reject`/`drop` in other languag
 rep(10, 10) %>%
   map(sample, 5) %>%
   keep(function(x) mean(x) > 6)
+```
 
-# Or use a formula
+Or use a formula
+
+```{r}
 rep(10, 10) %>%
   map(sample, 5) %>%
   keep(~ mean(.x) > 6)
+```
 
-# Using a string instead of a function will select all list elements
-# where that subelement is TRUE
+Using a string instead of a function will select all list elements.
+Where that subelement is `TRUE.`
+
+```{r}
 (x <- rerun(5, a = rbernoulli(1), b = sample(10)))
 x %>% keep("a")
 x %>% discard("a")
+```
 
-# filter list on is.integer
+filter list on is.integer
+
+```{r}
 list(a = 1:3
      ,b = gl(4,3)
      ,d = integer()
      ,e = letters
      ) %>% purrr::keep(is.integer)
+```
 
-# compact keeps all non-NULL and empty items
+compact keeps all non-NULL and empty items
 
+```{r}
 list( a = 1
      ,b = NULL
      ,c = FALSE
@@ -2539,11 +2787,17 @@ use `map_if` with predicate function and `map_at` with names or index
 iris %>%
   purrr::map_if(is.factor, as.character) %>%
   str()
+```
 
-# Specify which columns to map with a numeric vector of positions:
+Specify which columns to map with a numeric vector of positions:
+
+```{r}
 mtcars %>% map_at(c(1, 4, 5), as.character) %>% str()
+```
 
-# Or with a vector of names:
+Or with a vector of names:
+
+```{r}
 mtcars %>% map_at(c("cyl", "am"), as.character) %>% str()
 ```
 
@@ -2551,11 +2805,12 @@ mtcars %>% map_at(c("cyl", "am"), as.character) %>% str()
 
 apply a function to list-elements of a list, and must return a list. the length of the list going in can be of a different size to that one going out.
 
+Let's write a function that returns a larger list or an empty list
+depending on some condition. This function also uses the names
+metadata available in the attributes of the list-element.
+
 ```{r "purrr::lmap"}
 library(purrr)
-# Let's write a function that returns a larger list or an empty list
-# depending on some condition. This function also uses the names
-# metadata available in the attributes of the list-element
 maybe_rep <- function(e) {
   n <- rpois(1, 2)
   out <- rep_len(e, n)
@@ -2566,21 +2821,41 @@ maybe_rep <- function(e) {
 }
 
 x <- list(a = 1:4, b = letters[5:7], c = 8:9, d = letters[10])
+```
 
-# The output size varies each time we map f()
+The output size varies each time we map f()
+
+```{r}
 x %>% lmap(maybe_rep)
+```
 
-# We can apply f() on a selected subset of x
+We can apply f() on a selected subset of x
+
+```{r}
 x %>% lmap_at(c("a", "d"), maybe_rep)
+```
 
-# Or only where a condition is satisfied
+Or only where a condition is satisfied
+
+```{r}
 x %>% lmap_if(is.character, maybe_rep)
+```
 
-# each element in the list is sent in as a list
-list(a = 1:2, b = letters[1:3]) %>% lmap(function(eal) { class(eal) %>% print; eal}) %>% invisible
-# making it possible to access the names of the list entries
-x %>% lmap(function(e) { names(e) %<>% paste0("_3"); e})
-# and you'll have to dig deeper to e.g. alter the names of the original list entries
+each element in the list is sent in as a list
+
+```{r}
+list(a = 1:2, b = letters[1:3]) %>% purrr::lmap(function(eal) { class(eal) %>% print; eal}) %>% invisible
+```
+
+making it possible to access the names of the list entries
+
+```{r}
+x %>% purrr::lmap(function(e) { names(e) %<>% paste0("_3"); e})
+```
+
+and you'll have to dig deeper to e.g. alter the names of the original list entries
+
+```
 list(a = c(B = 2, V = 3)) %>% lmap(function(eal) {names(eal[[1]]) %<>% paste0(0); eal})
 ```
 
@@ -2609,17 +2884,23 @@ l1 <- list(
 
 ```
 
+In the above list, "obj" is level 1, "prop" is level 2 and "param"
+is level 3. To apply `sum()` on all params, we map it at depth 3:
+
 ```{r "purrr::at_depth DEPRECATED", eval = FALSE}
 
-# In the above list, "obj" is level 1, "prop" is level 2 and "param"
-# is level 3. To apply sum() on all params, we map it at depth 3:
 l1 %>% at_depth(3, sum)
+```
 
-# map() lets us pluck the elements prop1/param2 in obj1 and obj2:
+map() lets us pluck the elements prop1/param2 in obj1 and obj2:
+
+```{r}
 l1 %>% map(c("prop1", "param2")) %>% str()
+```
 
-# But what if we want to pluck all param2 elements? Then we need to
-# act at a lower level:
+But what if we want to pluck all param2 elements? Then we need to act at a lower level:
+
+```{r}
 l1 %>% at_depth(2, "param2") %>% str()
 
 ```
@@ -2647,12 +2928,18 @@ x %>% has_element(1:10)
 x %>% has_element(3)
 list(1, 2, 3) %>% has_element(2)
 c(1, 2, 3) %>% has_element(2)
+```
 
-# gotchas!
+gotchas!
+
+```{r}
 1:3 %>% as.list %>% has_element(2)
 1:3 %>% has_element(2)
+```
 
-# instead use
+instead use
+
+```{r}
 1:3 %>% as.list %>% has_element(2L)
 1:3 %>% has_element(2L)
 
@@ -3149,11 +3436,11 @@ MobileTel %>%
 
 # Cheats {.tabset .tabset-fade .tabset-pills}
 
-### Overview
+## Overview
 
 Section for "tricks".
 
-### saving files
+## saving files
 
 `save` saves the R-object(s) to disc and keeps the naming
 
@@ -3193,7 +3480,7 @@ dput; dget # not for S4 objects
 dump; source # not for S4 objects
 ```
 
-### remove names
+## remove names
 
 ```{r}
 require(magrittr)
@@ -3219,7 +3506,7 @@ crossMatrix
 
 ```
 
-### remove named columns
+## remove named columns
 
 ```{r message=FALSE}
 require(magrittr)
@@ -3232,7 +3519,7 @@ df %>% subset(select=-c(z,u))
 df[ , -which(names(df) %in% c("z","u"))] # also works but not as nice IMO
 ```
 
-### insertion in characters
+## insertion in characters
 
 or strings. how to find something similar to the use case of Ruby's `insert`
 
@@ -3249,7 +3536,7 @@ insert.character <- function(chr, position, insertion){ # only works with \w cha
 "shjat" %>% insert(3, "_")
 ```
 
-### time-series convertions
+## time-series convertions
 
 ```{r}
 
@@ -3294,7 +3581,7 @@ UKgas %>%
                gas = as.matrix(.)) }
 ```
 
-### Tables
+## Tables
 
 ```{r, eval=FALSE, echo=FALSE}
 
@@ -3320,7 +3607,7 @@ CrossTable(infert$education, infert$induced, expected = TRUE, format="SAS")
 CrossTable(infert$education, infert$induced, expected = TRUE, format="SPSS")
 ```
 
-### cumulatively sum within a group
+## cumulatively sum within a group
 
 Cumulativily sum the `carb` column within each `am`-group
 
@@ -3337,7 +3624,7 @@ library(dplyr)
   )
 ```
 
-### list to data.frame
+## list to data.frame
 
 given a list of data frames. use `Reduce` to bind them togetherq
 
@@ -6067,7 +6354,48 @@ dplyrPkgs <- c("bindr", "bindrcpp", "glue", "pkgconfig", "rlang", "dplyr" )
 installFromCran(dplyrPkgs)
 ```
 
-## ggplot2
+## tidyverse
+
+```{r, "tidyverse installation", eval = FALSE}
+
+c("r-dbi/DBI"
+  ,"r-lib/rlang"
+  ,"tidyverse/dplyr"
+  ,"tidyverse/tibble"
+  ,"tidyverse/purrr"
+  ,"tidyverse/dbplyr"
+  ,"cran/rematch" ,"cran/cellranger","tidyverse/readxl"
+ ) %>% devtools::install_github()
+
+c("r-lib/cli","r-lib/crayon"
+  ,"rstudio/rstudioapi"
+  ,"tidyverse/magrittr", "tidyverse/hms"
+  ,"cran/BH", "mdlincoln/clipr" "tidyverse/readr"
+  ,"tidyverse/forcats", "tidyverse/haven", "tidyverse/lubridate"
+  ,"tidyverse/modelr"
+  ,"r-lib/evaluate", "cran/yaml", "cran/markdown", "yihui/xfun", "yihui/highr", "yihui/knitr"
+  ,"cran/base64enc", "eddelbuettel/digest", "cran/htmltools", "cran/jsonlite", "yihui/mime", "cran/tinytex","rstudio/rmarkdown"
+  ,"r-lib/processx" , "r-lib/callr", "r-lib/fs", "edwindj/whisker", "r-lib/withr", "tidyverse/reprex"
+  ) %>% devtools::install_github()
+
+devtools::install_github( "tidyverse/tidyverse" )
+
+```
+
+### tibble
+
+installing `tibble`
+
+```{r, eval = FALSE}
+
+depsLoc <- paste("r-lib", c("crayon", "pillar", "rlang"), sep = "/")
+repoLoc <- "tidyverse/tibble"
+c(depsLoc, repoLoc) %>% devtools::install_github()
+
+```
+
+
+### ggplot2
 
 installation of `ggplot2` using `devtools`
 
@@ -6078,7 +6406,51 @@ devtools::install_github("tidyverse/ggplot2")
 
 ```
 
-## shiny
+add-on packages
+
+#### gifski
+
+```{r "gifski installation", eval = FALSE}
+
+depLoc <- "cran/png"
+pkgLoc <- "r-rust/gifski"
+
+c(depLoc, pkgLoc) %>% devtools::install_github(force = TRUE)
+
+```
+
+
+#### gganimate
+
+```{r "gganimate installation", eval = FALSE}
+
+tweenrLocs <- c("cran/farver", "cran/tweenr")
+depsLoc <- c("r-lib/rlang", "r-lib/progress", "tidyverse/glue", tweenrLocs, "tidyverse/ggplot2")
+pkgLoc <- "thomasp85/gganimate"
+c(depsLoc, pkgLoc) %>% devtools::install_github()
+
+```
+
+#### plotly
+
+```{r "plotly installation", eval = FALSE}
+
+depLoc <-
+  c("RcppCore/Rcpp", "rstudio/promises", "rstudio/httpuv", "rstudio/crosstalk", "Rdatatable/data.table", "cran/hexbin"
+    ,"tidyverse/tibble", "r-lib/rlang", "tidyverse/purrr"
+    ,"ramnathv/htmlwidgets", "r-lib/gtable", "tidyverse/ggplot2", "tidyverse/dplyr", "eddelbuettel/digest")
+pkgLoc <- "ropensci/plotly"
+c(depLoc, pkgLoc) %>% devtools::install_github(dependecies=TRUE)
+
+```
+
+## rvest
+
+website scraper package. Needs `xml2` which looks for `xml2-config` and `pkg-config` both which has some shenanigans. Look into them and environment variables if you have issues.
+
+```{r, "rvest installation", eval = FALSE}
+
+c( "r-lib/xml2", "cran/httr", "hadley/rvest") %>% devtools::install_github()
 
 ```{r, eval = FALSE }
 c("httpuv", "xtable", "sourcetools", "shiny") %>% paste0("cran/",.) %>% devtools::install_github()
@@ -6128,15 +6500,6 @@ installing `partykit` dependencies.
 devtools::install_github('cran/Formula')
 ```
 
-## tibble
-
-installing `tibble`
-
-```{r, eval = FALSE}
-devtools::install_github('cran/rlang')
-devtools::install_github('cran/tibble')
-```
-
 ## roxygen2
 
 ```{r, eval = FALSE }
@@ -6152,9 +6515,11 @@ devtools::install_github('cran/roxygen2')
 ## testthat
 
 ```{r, eval = FALSE }
-devtools::install_github('cran/crayon')
-devtools::install_github('cran/praise')
-devtools::install_github('cran/testthat')
+
+depsLoc <- c('r-lib/crayon', 'cran/praise')
+pkgLoc <- 'r-lib/testthat'
+c(depsLoc, pkgLoc) %>% devtools::install_github()
+
 ```
 
 ## rattle
