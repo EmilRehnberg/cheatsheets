@@ -2,6 +2,7 @@
 devtools::install_github("tidyverts/tsibble")
 
 # ---- tsibble-demo ----
+
 sdd <-
   data.frame(
     state = "delaware",
@@ -13,6 +14,8 @@ sdd <-
   dplyr::mutate_at("time_stamp", as.POSIXct) %>%
   tsibble::as_tsibble(index = "time_stamp", key = "city")
 
+sdd$time_stamp %>% tsibble::interval_pull()
+tsibble::yearquarter(c("2000 Q1", "2000 Q2", "2000 Q3", "2000 Q4", "2001 Q1")) %>% tsibble::interval_pull()
 sdd %>% tsibble::index()
 sdd %>% tsibble::index_var()
 sdd %>% tsibble::interval()
